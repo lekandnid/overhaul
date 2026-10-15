@@ -1,7 +1,7 @@
 /* Service worker: ให้เปิดแอปได้แม้ไม่มีสัญญาณ
    - หน้าเว็บ: ลองโหลดของใหม่ก่อน (รอไม่เกิน 4 วินาที) ถ้าไม่มีสัญญาณใช้ของที่เก็บไว้
    - ไม่ยุ่งกับการส่งรูปไป Google (script.google.com) */
-const CACHE = 'overhaul-v2';
+const CACHE = 'overhaul-v3';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

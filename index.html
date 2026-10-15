@@ -909,7 +909,7 @@ async function teamSheet(){
   const pend={};for(const t of CFG.teams)pend[t.id]=await pendingOfTeam(t.id);
   const row=(tid,name,sub)=>`<div class="job${CFG.active===tid?' cur':''}" data-act="use" data-tid="${tid}">
       <div><div class="m">${tid?'👥':'📱'} ${esc(name)}</div><div class="d">${sub}</div></div>
-      <div class="st">${CFG.active===tid?'✓ ใช้อยู่':'แตะเพื่อสลับ'}${tid?`<br><button class="act" style="padding:4px 9px;font-size:12px;margin-top:4px" data-act="edit" data-tid="${tid}">✏️ แก้</button>`:''}</div></div>`;
+      <div class="st">${CFG.active===tid?'✓ ใช้อยู่':'แตะเพื่อสลับ'}${tid?`<br><button class="act" style="padding:4px 9px;font-size:12px;margin-top:4px;display:inline-flex" data-act="link" data-tid="${tid}">🔗 ลิงก์ตั้งค่า</button> <button class="act" style="padding:4px 9px;font-size:12px;margin-top:4px;display:inline-flex" data-act="edit" data-tid="${tid}">✏️ แก้</button>`:''}</div></div>`;
   openSheet('🔀 ทีม',`<div class="note">แตะทีมเพื่อสลับ งานจะแยกตามทีม และรูปที่ค้างส่งของทุกทีมจะส่งต่อเองเบื้องหลัง</div>
     ${CFG.teams.map(t=>row(t.id,t.name,`รหัสทีม: ${esc(t.key)}${pend[t.id]?` • ⏳ ค้างส่ง ${pend[t.id]}`:''}`)).join('')}
     ${row('','ใช้ในเครื่องอย่างเดียว','ไม่ส่งข้อมูลให้ทีม')}
@@ -918,6 +918,7 @@ async function teamSheet(){
     async(act,el)=>{
       if(act==='use')return switchTeam(el.dataset.tid);
       if(act==='edit')return teamForm(team(el.dataset.tid));
+      if(act==='link')return shareSetupLink(team(el.dataset.tid));
       if(act==='add')return teamForm(null);
       if(act==='pin'){const v=await askText({title:'🔑 PIN โหมดในเครื่อง',label:'PIN (เว้นว่าง = ไม่ใช้)',type:'pin',value:CFG.pin});
         if(v!=null){CFG.pin=v.trim();await saveCfg();toast('บันทึก PIN แล้ว ✓');}teamSheet();}
@@ -979,6 +980,39 @@ async function deleteTeam(t){
   if(CUR&&!JOBS.has(CUR)){CUR=null;VIEW=null;IMGS=new Map();await DB.del('kv','cur');$('#pages').innerHTML='';updBar();}
   toast(`ลบ ${t.name} แล้ว`);teamSheet();
 }
+/* ===== ลิงก์ตั้งค่าอัตโนมัติ: .../overhaul/#u=<ลิงก์ /exec>&k=<รหัสทีม> ===== */
+function setupLinkOf(t){
+  return `${location.origin}${location.pathname}#u=${encodeURIComponent(t.url)}&k=${encodeURIComponent(t.key)}`;
+}
+async function shareSetupLink(t){
+  if(location.protocol!=='https:'){toast('⚠️ สร้างลิงก์ได้เมื่อเปิดแอปจาก GitHub (https) เท่านั้น',4000);return;}
+  const link=setupLinkOf(t), text=`📷 แตะลิงก์นี้เพื่อตั้งค่าแอป OVERHAUL ของ ${t.name}\n(ส่งเฉพาะในกลุ่มทีม เพราะมีรหัสทีมอยู่ในลิงก์)`;
+  try{if(navigator.share){await navigator.share({title:`ตั้งค่า OVERHAUL ${t.name}`,text,url:link});return;}}
+  catch(e){if(e.name==='AbortError')return;}
+  try{await navigator.clipboard.writeText(link);toast('คัดลอกลิงก์แล้ว ✓ นำไปวางในกลุ่ม LINE ได้เลย',3500);return;}catch(e){}
+  await askText({title:`🔗 ลิงก์ตั้งค่า ${t.name}`,label:'กดค้างที่ข้อความเพื่อคัดลอก',value:link,multi:true,ok:'ปิด'});
+}
+function readSetupHash(){
+  const h=location.hash.slice(1);if(!h)return null;
+  const p=new URLSearchParams(h), url=(p.get('u')||'').trim(), key=(p.get('k')||'').trim();
+  return url&&key?{url,key}:null;
+}
+const clearHash=()=>history.replaceState(null,'',location.pathname+location.search);
+async function applySetupLink(c){
+  if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(c.url)){clearHash();toast('⚠️ ลิงก์ตั้งค่าไม่ถูกต้อง',4000);return;}
+  const ex=CFG.teams.find(t=>t.url===c.url&&t.key===c.key);
+  if(ex){clearHash();if(CFG.active!==ex.id)await switchTeam(ex.id);toast(`ตั้งค่า ${ex.name} ไว้แล้ว ✓`,3000);return;}
+  if(!confirm(`เชื่อมต่อแอปกับทีมจากลิงก์นี้หรือไม่?\n\nรหัสทีม: ${c.key}`)){clearHash();return;}
+  toast('กำลังเชื่อมต่อทีม...',0);
+  let r;try{r=await api({a:'ping'},20000,c);}
+  catch(e){toast('⚠️ เชื่อมต่อไม่ได้: '+(e.message||'ไม่มีสัญญาณ')+' — ตรวจสัญญาณแล้วแตะลิงก์อีกครั้ง',6000);return;}
+  clearHash();
+  if(r.config&&r.config.logo){LOGO=r.config.logo;await DB.put('kv','logo',LOGO);renderLogo();}
+  const id='t'+uid(), name=r.team||c.key;
+  CFG.teams.push({id,name,...c});await saveCfg();
+  await switchTeam(id);toast(`✅ ตั้งค่า ${name} เรียบร้อย พร้อมใช้งาน`,3500);
+}
+
 /* ย้ายงานในเครื่องไปอยู่ทีมอื่น (เปลี่ยนคีย์) */
 async function rekey(oldKey,tid,markLocal){
   const J=JOBS.get(oldKey);if(!J)return oldKey;
@@ -1203,6 +1237,8 @@ setInterval(()=>{if(document.visibilityState==='visible'&&CFG.teams.length&&!SYN
   if(cur&&JOBS.has(cur))await openJob(cur);
   else if([...JOBS.values()].filter(J=>(J.team||'')===CFG.active).length===1)await openJob([...JOBS].find(([k,J])=>(J.team||'')===CFG.active)[0]);
   else{updChip();jobsSheet();}
+  const sl=readSetupHash();if(sl)await applySetupLink(sl);
+  window.addEventListener('hashchange',()=>{const c=readSetupHash();if(c)applySetupLink(c);});
 })();
 </script>
 </body>
