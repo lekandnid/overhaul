@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f2a44">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>รายงาน OVERHAUL</title>
+<style>
+:root{--brand:#0b5394;--brand2:#e8f0fa;--line:#b7c3d0;--ink:#1d2733;--bg:#dfe4ea;--acc:#e69138;--ok:#1e8449;--bad:#c0392b;--z:1}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Leelawadee UI","Sarabun","Tahoma",sans-serif}
+button{font:inherit;color:inherit}
+
+/* ===== แถบบน ===== */
+.bar{position:sticky;top:0;z-index:50;background:#0f2a44;color:#fff;display:flex;gap:6px;padding:8px 10px;align-items:center;box-shadow:0 2px 6px #0004}
+.bar button{background:#1f4f7d;color:#fff;border:0;border-radius:10px;padding:9px 11px;font-size:14px;cursor:pointer;white-space:nowrap}
+.bar button:active{transform:scale(.96)}
+#bJob{flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;font-weight:700;background:#173b5e}
+#bJob small{font-weight:400;opacity:.8}
+#chip{font-size:12.5px;padding:9px 9px}
+#chip.ok{background:#1e6b40}#chip.pend{background:#a8641a}#chip.off{background:#555}#chip.err{background:#8e2b2b}
+#bPdf{background:var(--acc)}
+.closedbar{display:none;background:#5d6d7e;color:#fff;text-align:center;font-size:13.5px;padding:6px}
+body.closed .closedbar{display:block}
+
+/* ===== ตั้งค่าหน้า (ไม่พิมพ์) ===== */
+.pages{padding:12px 8px 70px}
+.pwrap{margin:0 auto 16px}
+.pctl{width:min(100%,calc(210mm * var(--z)));margin:0 auto 6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;background:#fff;border-radius:10px;padding:6px 8px;font-size:12.5px;box-shadow:0 1px 4px #0002}
+.pctl b{color:var(--brand);margin-right:4px}
+.pctl select,.pctl button{font-size:12.5px;border:1px solid #c5d0dc;background:#f5f8fb;border-radius:7px;padding:5px 6px;cursor:pointer;color:var(--ink)}
+.pctl button:disabled,.pctl select:disabled{opacity:.35;cursor:default}
+.pctl .ck{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
+.pctl .sp{flex:1}
+body.closed .pctl{display:none}
+
+/* ===== หน้า A4 ===== */
+.page{zoom:var(--z);width:210mm;height:297mm;margin:0 auto;background:#fff;box-shadow:0 2px 10px #0003;padding:9mm 10mm;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:4mm;border-bottom:.6mm solid var(--brand);padding-bottom:1.5mm;height:15mm;flex:none}
+.logo{width:48mm;height:12.5mm;display:flex;align-items:center;cursor:pointer}
+.logo img{max-width:100%;max-height:100%;object-fit:contain}
+.logo .ph{border:1px dashed #9ab;color:#789;font-size:11px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:4px;text-align:center}
+.hdr .right{text-align:right;font-size:10pt;line-height:1.45}
+.ptitle{margin:2.5mm 0 3mm;background:var(--brand2);border-left:2mm solid var(--brand);padding:1.6mm 3mm;font-weight:700;font-size:12pt;line-height:1.35;display:flex;gap:1.5mm;flex:none;cursor:pointer}
+.ptitle .ttxt{flex:1}
+body:not(.closed) .ptitle:hover .ttxt{text-decoration:underline dashed #9ab}
+.grid{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:4mm}
+.row{display:flex;justify-content:center;gap:5mm}
+.row.two{justify-content:space-between}
+.slot{flex:none}
+.frame{position:relative;overflow:hidden;border:.3mm solid var(--line);background:#f6f8fa;cursor:pointer}
+.frame img{position:absolute;max-width:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border:1.5px dashed #a9b8c8;margin:2mm;border-radius:2mm;color:#7d8fa3;text-align:center;font-size:11pt;line-height:1.5}
+.empty b{font-size:26pt;font-weight:400}
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#789;font-size:11pt;text-align:center}
+.badge{position:absolute;top:1.5mm;right:1.5mm;background:var(--acc);color:#fff;font-weight:700;font-size:12pt;border-radius:4mm;padding:.6mm 2.4mm;box-shadow:0 1px 3px #0006}
+.upmark{position:absolute;left:1.5mm;top:1.5mm;background:#000a;color:#fff;font-size:10pt;border-radius:2mm;padding:.3mm 1.6mm}
+body.swapping .frame{outline:2px dashed var(--acc);outline-offset:-2px}
+.slot.swapsrc .frame{outline:4px solid var(--acc)}
+.cap{height:10mm;font-size:9pt;line-height:1.3;padding:1mm 1.5mm;border:.3mm solid var(--line);border-top:0;overflow:hidden;white-space:pre-wrap;word-break:break-word;cursor:pointer}
+.cap:empty:before{content:"แตะเพื่อพิมพ์ข้อเสนอแนะ / Alarm code";color:#9aa}
+body.closed .cap:empty:before{content:""}
+.ovf{display:none;position:absolute;left:50%;bottom:4mm;transform:translateX(-50%);background:var(--bad);color:#fff;font-size:10pt;font-weight:700;padding:2mm 4mm;border-radius:3mm;box-shadow:0 2px 8px #0005;white-space:nowrap;z-index:5}
+.page.over .ovf{display:block}
+.pwrap.over .pctl{outline:2px solid var(--bad)}
+
+/* ===== หน้าต่างล่าง (bottom sheet) ===== */
+.sheet{position:fixed;inset:0;background:#0008;z-index:80;display:flex;align-items:flex-end;justify-content:center}
+.sheet.hide{display:none}
+.sbox{background:#fff;width:min(560px,100%);max-height:90vh;overflow:auto;border-radius:18px 18px 0 0;padding:12px 14px calc(18px + env(safe-area-inset-bottom))}
+@media(min-width:700px){.sheet{align-items:center}.sbox{border-radius:18px}}
+.shead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.shead b{flex:1;font-size:17px}
+.shead button{border:0;background:#eef2f6;border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer}
+.sheet.lock #shX{display:none}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.act{display:flex;align-items:center;gap:8px;padding:13px 12px;border-radius:12px;border:1px solid #d5dde6;background:#f7f9fb;font-size:15px;cursor:pointer;text-align:left;color:var(--ink)}
+.act:active{transform:scale(.97)}
+.act.big{grid-column:span 2;justify-content:center;font-size:17px;background:var(--brand);color:#fff;border:0;padding:16px}
+.act.full{grid-column:span 2}
+.act.pri{background:var(--brand);color:#fff;border:0;justify-content:center}
+.act.warn{color:#8e2b2b}
+.act:disabled{opacity:.4}
+.sec{grid-column:span 2;font-size:12.5px;color:#678;margin:8px 0 -2px;font-weight:700}
+.fld{display:block;margin:8px 0}
+.fld span{display:block;font-size:13px;color:#567;margin-bottom:4px}
+.fld input,.fld textarea,.fld select{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid #c5d0dc;border-radius:10px;background:#fff;color:var(--ink)}
+.fld textarea{min-height:110px;resize:vertical}
+.note{font-size:13px;color:#567;background:#f3f6f9;border-radius:10px;padding:8px 10px;margin:4px 0 10px;line-height:1.55}
+.note.warn{background:#fff3e0;color:#7a4b00}
+.tabs{display:flex;gap:6px;margin:12px 0 8px}
+.tabs button{flex:1;border:1px solid #c5d0dc;background:#f5f8fb;border-radius:10px;padding:9px;cursor:pointer;font-size:14px}
+.tabs button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.job{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid #dde4ec;border-radius:12px;margin-bottom:7px;cursor:pointer;background:#fff}
+.job.cur{border-color:var(--acc);background:#fff8ef}
+.job .m{font-weight:700;font-size:15.5px}
+.job .d{font-size:12.5px;color:#678;margin-top:2px}
+.job .st{margin-left:auto;font-size:12px;text-align:right;color:#567;white-space:nowrap}
+.empty-list{text-align:center;color:#89a;padding:18px;font-size:14px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.th{width:92px;height:92px;border-radius:10px;overflow:hidden;border:3px solid #dde4ec;position:relative;cursor:pointer;background:#eee;display:flex;align-items:center;justify-content:center}
+.th.on{border-color:var(--acc)}
+.th img{width:100%;height:100%;object-fit:cover}
+.th i{position:absolute;bottom:2px;left:2px;right:2px;background:#000a;color:#fff;font-size:10.5px;font-style:normal;padding:1px 4px;border-radius:4px;text-align:center}
+.th.on:after{content:"✓ ใช้รูปนี้";position:absolute;top:2px;left:2px;background:var(--acc);color:#fff;font-size:10.5px;padding:1px 5px;border-radius:4px}
+.cropbox{width:min(78vw,380px);aspect-ratio:1;margin:4px auto 10px;position:relative;overflow:hidden;background:#222;border-radius:6px;touch-action:none;cursor:move}
+.cropbox img{position:absolute;max-width:none;pointer-events:none;user-select:none}
+.cropbox:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(#fff4,#fff4) 33.3% 0/1px 100% no-repeat,linear-gradient(#fff4,#fff4) 66.6% 0/1px 100% no-repeat,linear-gradient(#fff4,#fff4) 0 33.3%/100% 1px no-repeat,linear-gradient(#fff4,#fff4) 0 66.6%/100% 1px no-repeat}
+.pinin{letter-spacing:8px;text-align:center;font-size:24px!important}
+
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#0f2a44;color:#fff;padding:11px 16px;border-radius:12px;font-size:14px;box-shadow:0 4px 14px #0005;z-index:99;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
+.toast.show{opacity:1}
+
+@page{size:A4;margin:0}
+@media print{
+  body{background:#fff}
+  .bar,.closedbar,.pctl,.empty,.loading,.badge,.upmark,.logo .ph,.toast,.ovf,.sheet{display:none!important}
+  .pages{padding:0}
+  .pwrap{margin:0}
+  .page{zoom:1!important;margin:0;box-shadow:none;break-after:page;page-break-after:always}
+  .pwrap:last-child .page{break-after:auto;page-break-after:auto}
+  .cap:empty:before{content:""}
+  .frame{outline:none!important;cursor:default}
+  .ptitle .ttxt{text-decoration:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <button id="bJob" title="รายการงาน">🔧 เลือกงาน</button>
+  <button id="chip" title="สถานะการซิงก์">📱</button>
+  <button id="bPdf">🖨️ PDF</button>
+  <button id="bMenu" title="เมนู">☰</button>
+</div>
+<div class="closedbar">🔒 งานนี้ปิดแล้ว ดูและพิมพ์ได้อย่างเดียว</div>
+
+<div class="pages" id="pages"></div>
+
+<div class="sheet hide" id="sheet"><div class="sbox">
+  <div class="shead"><b id="shTitle"></b><button id="shX" aria-label="ปิด">✕</button></div>
+  <div id="shBody"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<input type="file" id="fCam" accept="image/*" capture="environment" hidden>
+<input type="file" id="fGal" accept="image/*" hidden>
+<input type="file" id="fMulti" accept="image/*" multiple hidden>
+<input type="file" id="fLogo" accept="image/*" hidden>
+<input type="file" id="fJson" accept=".json,application/json,text/plain" hidden>
+
+<script>
+/* =====================================================================
+   ค่าคงที่
+   ===================================================================== */
+const LAYOUTS={'222':[2,2,2],'232':[2,3,2],'333':[3,3,3]};
+const LNAME={'222':'2-2-2 (6 รูป)','232':'2-3-2 (7 รูป)','333':'3-3-3 (9 รูป)'};
+const SIZES=[6,6.5,7,7.5,8];
+const MAX3=6;            // แถวที่มี 3 รูป กว้างได้ไม่เกิน 6 ซม.
+const POLL_MS=10000;     // ดึงข้อมูลจากทีมทุก 10 วินาที
+
+function defPages(){return [
+  {id:'p0',t:'การเตรียมอุปกรณ์ก่อนเข้างาน OVERHAUL พัดลม พร้อมวัดค่ากระแสไฟฟ้าและความเร็วลม',layout:'232',size:6,cap:false},
+  {id:'p1',t:'OVERHAUL MOTOR',layout:'222',size:6,cap:false},
+  {id:'p2',t:'OVERHAUL BLOWER (1/2)',layout:'222',size:6,cap:false},
+  {id:'p3',t:'OVERHAUL BLOWER (2/2)',layout:'222',size:6,cap:false},
+  {id:'p4',t:'เปลี่ยนสายพาน และ ตั้ง Alignment Laser',layout:'222',size:6,cap:false},
+  {id:'p5',t:'วัดค่าความร้อน Temperature และค่าความสั่นสะเทือน Vibration (mm/s)',layout:'222',size:6,cap:false},
+  {id:'p6',t:'ข้อเสนอแนะ Comment / Alarm Code',layout:'222',size:6,cap:true}
+];}
+
+/* =====================================================================
+   ตัวช่วยทั่วไป
+   ===================================================================== */
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);};
+const fmtD=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?`${m[3]}/${m[2]}/${m[1]}`:(s||'');};
+const fmtT=ts=>{const d=new Date(ts),z=x=>String(x).padStart(2,'0');return `${z(d.getHours())}:${z(d.getMinutes())} ${z(d.getDate())}/${z(d.getMonth()+1)}`;};
+const rowSize=(p,cnt)=>cnt===3?Math.min(p.size,MAX3):p.size;
+const mkId=(m,d)=>m.replace(/[\\/:*?"<>|#%&\s]+/g,'-')+'_'+d;
+
+let tT;
+function toast(msg,ms=2400){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(tT);if(ms)tT=setTimeout(()=>t.classList.remove('show'),ms);}
+
+function normPages(arr,gen){
+  if(!Array.isArray(arr)||!arr.length)return defPages();
+  const seen=new Set();
+  return arr.map((p,i)=>{
+    let id=typeof p.id==='string'&&p.id&&!seen.has(p.id)?p.id:(gen?'g'+uid():'x'+i); seen.add(id);
+    return {id,t:String(p.t??''),layout:LAYOUTS[p.layout]?p.layout:'222',size:SIZES.includes(+p.size)?+p.size:6,cap:!!p.cap};
+  });
+}
+function norm(m){
+  m.caps=m.caps||{};m.choice=m.choice||{};m.crop=m.crop||{};m.photos=m.photos||{};m.deleted=m.deleted||{};
+  m.pages=normPages(m.pages,false);return m;
+}
+function applyOp(m,o){
+  switch(o.t){
+    case 'cap':m.caps[o.slot]=String(o.v||'');break;
+    case 'crop':m.crop[o.pid]={z:o.z,px:o.px,py:o.py};break;
+    case 'choose':m.choice[o.slot]=o.pid;break;
+    case 'move':if(m.photos[o.pid])m.photos[o.pid].slot=o.slot;break;
+    case 'pages':if(Array.isArray(o.v))m.pages=o.v;break;
+    case 'del':delete m.photos[o.pid];delete m.crop[o.pid];m.deleted[o.pid]=1;break;
+  }
+}
+
+/* =====================================================================
+   ที่เก็บในเครื่อง (IndexedDB) – ถ้าใช้ไม่ได้จะเก็บในหน่วยความจำแทน
+   kv: ตั้งค่า | jobs: ข้อมูลงาน | imgs: รูป | ops: การแก้ไขที่รอส่ง | q: รูปที่รอส่ง
+   ===================================================================== */
+const DB={
+  db:null,mem:{},
+  open(){return new Promise(res=>{try{
+    const r=indexedDB.open('overhaul-report',2);
+    r.onupgradeneeded=()=>{const d=r.result;
+      for(const s of ['kv','jobs','ops','q'])if(!d.objectStoreNames.contains(s))d.createObjectStore(s);
+      if(!d.objectStoreNames.contains('imgs'))d.createObjectStore('imgs').createIndex('job','job');};
+    r.onsuccess=()=>{this.db=r.result;res(true)};r.onerror=()=>res(false);r.onblocked=()=>res(false);
+  }catch(e){res(false)}})},
+  _m(s){return this.mem[s]||(this.mem[s]=new Map())},
+  _req(s,mode,fn){return new Promise(res=>{try{const t=this.db.transaction(s,mode);const r=fn(t.objectStore(s));
+    t.oncomplete=()=>res(r?r.result:undefined);t.onerror=t.onabort=()=>res(undefined);}catch(e){res(undefined)}})},
+  get(s,k){return this.db?this._req(s,'readonly',st=>st.get(k)):Promise.resolve(this._m(s).get(k))},
+  put(s,k,v){if(!this.db){this._m(s).set(k,v);return Promise.resolve()}return this._req(s,'readwrite',st=>st.put(v,k))},
+  del(s,k){if(!this.db){this._m(s).delete(k);return Promise.resolve()}return this._req(s,'readwrite',st=>st.delete(k))},
+  entries(s){
+    if(!this.db)return Promise.resolve([...this._m(s).entries()]);
+    return new Promise(res=>{const out=[];try{const t=this.db.transaction(s);const c=t.objectStore(s).openCursor();
+      c.onsuccess=()=>{const k=c.result;if(k){out.push([k.key,k.value]);k.continue();}};
+      t.oncomplete=()=>res(out);t.onerror=()=>res(out);}catch(e){res(out)}});
+  },
+  byJob(jid){
+    if(!this.db)return Promise.resolve([...this._m('imgs').values()].filter(r=>r.job===jid));
+    return this._req('imgs','readonly',st=>st.index('job').getAll(jid)).then(r=>r||[]);
+  },
+  keysByJob(jid){
+    if(!this.db)return Promise.resolve([...this._m('imgs').entries()].filter(([k,v])=>v.job===jid).map(x=>x[0]));
+    return this._req('imgs','readonly',st=>st.index('job').getAllKeys(jid)).then(r=>r||[]);
+  }
+};
+
+/* =====================================================================
+   สถานะในหน่วยความจำ
+   ===================================================================== */
+let CFG={teams:[],active:'',pin:''};   // teams:[{id,name,url,key}] active: id ทีมที่ใช้อยู่ ('' = ในเครื่อง)
+const team=tid=>CFG.teams.find(t=>t.id===tid)||null;
+const actTeam=()=>team(CFG.active);
+const jkey=(tid,id)=>(tid||'local')+'::'+id;          // คีย์งานในเครื่อง = ทีม::รหัสงาน
+const jobTeam=k=>{const J=JOBS.get(k);return J?team(J.team):null;};
+const saveCfg=()=>DB.put('kv','cfg',CFG);
+let LOGO=null, TPL=null;
+const JOBS=new Map();   // jid -> {meta, local}
+const OPS=new Map();    // jid -> [op]
+let CUR=null, VIEW=null;
+let IMGS=new Map();     // รูปของงานที่เปิดอยู่ pid -> rec
+let ORDER=[];
+let NET='none', NETMSG='', SYNCING=false, PEND=0;
+let swapFrom=null, target=null, bulkStart=0;
+
+const saveJob=jid=>DB.put('jobs',jid,JOBS.get(jid));
+const saveOps=jid=>{const a=OPS.get(jid)||[];return a.length?DB.put('ops',jid,a):DB.del('ops',jid);};
+
+function computeView(){
+  const J=JOBS.get(CUR);
+  const v=norm(clone(J.meta));
+  (OPS.get(CUR)||[]).forEach(o=>applyOp(v,o));
+  VIEW=v;
+  document.body.classList.toggle('closed',!!v.closed);
+}
+
+/* รูปทั้งหมดในช่อง (จากเซิร์ฟเวอร์ + ที่ถ่ายในเครื่องแต่ยังไม่ส่ง) */
+function slotPhotos(slot){
+  const res=[],seen=new Set();
+  for(const [pid,p] of Object.entries(VIEW.photos))
+    if(p.slot===slot&&!VIEW.deleted[pid]){res.push({pid,w:p.w,h:p.h,ts:p.ts});seen.add(pid);}
+  for(const r of IMGS.values())
+    if(!r.up&&r.slot===slot&&!seen.has(r.pid)&&!VIEW.deleted[r.pid])res.push({pid:r.pid,w:r.w,h:r.h,ts:r.ts,local:true});
+  return res.sort((a,b)=>a.ts-b.ts);
+}
+function chosen(slot){
+  const ps=slotPhotos(slot);if(!ps.length)return null;
+  const c=VIEW.choice[slot];return ps.find(p=>p.pid===c)||ps[0];
+}
+function cropOf(pid){return VIEW.crop[pid]||(IMGS.get(pid)||{}).crop||{z:1,px:.5,py:.5};}
+
+function doOp(o){
+  if(!VIEW||VIEW.closed){toast('🔒 งานนี้ปิดแล้ว แก้ไขไม่ได้');return false;}
+  const a=OPS.get(CUR)||[];a.push(o);OPS.set(CUR,a);saveOps(CUR);
+  applyOp(VIEW,o);kick();return true;
+}
+function setPages(p){if(doOp({t:'pages',v:p}))renderJob();}
+
+/* =====================================================================
+   วาดหน้า
+   ===================================================================== */
+function build(){
+  const root=$('#pages');root.innerHTML='';ORDER=[];
+  const N=VIEW.pages.length, cl=VIEW.closed?' disabled':'';
+  VIEW.pages.forEach((p,pi)=>{
+    const w=document.createElement('div');w.className='pwrap';
+    const lopt=Object.keys(LAYOUTS).map(k=>`<option value="${k}"${k===p.layout?' selected':''}>${LNAME[k]}</option>`).join('');
+    const sopt=SIZES.map(s=>`<option value="${s}"${s===p.size?' selected':''}>${s}×${s} ซม.</option>`).join('');
+    w.innerHTML=`<div class="pctl" data-pi="${pi}">
+        <b>หน้า ${pi+1}</b>
+        <select data-k="layout"${cl}>${lopt}</select>
+        <select data-k="size"${cl}>${sopt}</select>
+        <label class="ck"><input type="checkbox" data-k="cap"${p.cap?' checked':''}${cl}> ช่องข้อความ</label>
+        <span class="sp"></span>
+        <button data-pa="bulk" title="เพิ่มหลายรูปจากคลัง เริ่มที่หน้านี้"${cl}>➕ รูป</button>
+        <button data-pa="up" title="ย้ายหน้าขึ้น"${pi===0?' disabled':cl}>⬆️</button>
+        <button data-pa="down" title="ย้ายหน้าลง"${pi===N-1?' disabled':cl}>⬇️</button>
+        <button data-pa="add" title="เพิ่มหน้าต่อจากหน้านี้"${cl}>📄➕</button>
+        <button data-pa="del" title="ลบหน้านี้"${N<=1?' disabled':cl}>🗑️</button>
+      </div>
+      <section class="page">
+        <div class="hdr"><div class="logo"></div>
+          <div class="right">รหัสเครื่องจักร: <b>${esc(VIEW.machine)}</b> &nbsp; วันที่ ${fmtD(VIEW.date)}<br>หน้า ${pi+1}/${N}</div></div>
+        <div class="ptitle" data-pi="${pi}"><span>${pi+1}.</span><span class="ttxt">${esc(p.t)}</span></div>
+        <div class="grid"></div>
+        <div class="ovf">⚠️ รูปล้นหน้า: ลดขนาดรูป หรือปิดช่องข้อความ</div>
+      </section>`;
+    const grid=w.querySelector('.grid');let k=0;
+    LAYOUTS[p.layout].forEach(n=>{
+      const row=document.createElement('div');row.className='row'+(n===2?' two':'');
+      const s=rowSize(p,n);
+      for(let i=0;i<n;i++){
+        const id=`${p.id}-${k++}`;ORDER.push(id);
+        const sl=document.createElement('div');sl.className='slot';sl.dataset.id=id;sl.style.width=s*10+'mm';
+        sl.innerHTML=`<div class="frame" style="width:${s*10}mm;height:${s*10}mm"></div>`+(p.cap?`<div class="cap" data-id="${id}"></div>`:'');
+        row.appendChild(sl);
+      }
+      grid.appendChild(row);
+    });
+    $('#pages').appendChild(w);
+  });
+}
+
+function geom(d){
+  const r=d.w/d.h;let W,H;
+  if(r>=1){H=100*d.z;W=H*r}else{W=100*d.z;H=W/r}
+  return {W,H,L:-(W-100)*d.px,T:-(H-100)*d.py};
+}
+function place(img,d){const g=geom(d);Object.assign(img.style,{width:g.W+'%',height:g.H+'%',left:g.L+'%',top:g.T+'%'});}
+
+function renderSlot(id){
+  const sl=$(`.slot[data-id="${id}"]`);if(!sl)return;
+  const fr=sl.querySelector('.frame'), ps=slotPhotos(id), ch=chosen(id);
+  if(!ch){fr.innerHTML=VIEW.closed?'':'<div class="empty"><div><b>📷</b><br>แตะเพื่อถ่าย / เลือกรูป</div></div>';}
+  else{
+    const rec=IMGS.get(ch.pid);
+    let h=rec?`<img src="${rec.src}" alt="">`:'<div class="loading">⏳<br>กำลังโหลดรูป</div>';
+    if(ps.length>1)h+=`<div class="badge">${ps.length}</div>`;
+    if(rec&&!rec.up&&jobTeam(CUR))h+='<div class="upmark">⏳</div>';
+    fr.innerHTML=h;
+    if(rec)place(fr.querySelector('img'),{w:ch.w,h:ch.h,...cropOf(ch.pid)});
+  }
+  const c=sl.querySelector('.cap');if(c)c.textContent=VIEW.caps[id]||'';
+}
+function renderLogo(){$$('.logo').forEach(l=>{l.innerHTML=LOGO?`<img src="${LOGO.src}" alt="logo">`:'<div class="ph">🖼️ แตะเพื่อใส่โลโก้</div>';});}
+function updBar(){
+  if(!CUR){$('#bJob').innerHTML='🔧 เลือกงาน';return;}
+  $('#bJob').innerHTML=`${VIEW.closed?'🔒':'🔧'} ${esc(VIEW.machine)} <small>${fmtD(VIEW.date)} ▾</small>`;
+  document.title=`OVERHAUL ${VIEW.machine} ${fmtD(VIEW.date)}`;
+}
+function renderJob(){
+  if(!CUR)return;
+  computeView();build();ORDER.forEach(renderSlot);renderLogo();updBar();updChip();
+  requestAnimationFrame(checkOverflow);
+}
+function checkOverflow(){
+  const over=[];
+  $$('.pwrap').forEach((w,i)=>{const g=w.querySelector('.grid');const o=g.scrollHeight>g.clientHeight+1;
+    w.classList.toggle('over',o);w.querySelector('.page').classList.toggle('over',o);if(o)over.push(i+1);});
+  return over;
+}
+function reportOverflow(okMsg){requestAnimationFrame(()=>{const o=checkOverflow();
+  if(o.length)toast(`⚠️ หน้า ${o.join(', ')} รูปล้นหน้า ลองลดขนาดรูปหรือปิดช่องข้อความ`,4500);else if(okMsg)toast(okMsg);});}
+
+/* =====================================================================
+   หน้าต่างล่าง (bottom sheet)
+   ===================================================================== */
+let shFn=null;
+function openSheet(title,html,fn,lock=false){
+  $('#shTitle').textContent=title;$('#shBody').innerHTML=html;shFn=fn||null;
+  $('#sheet').classList.toggle('lock',lock);$('#sheet').classList.remove('hide');
+}
+function closeSheet(){
+  if($('#sheet').classList.contains('lock')&&!CUR)return;
+  $('#sheet').classList.add('hide');$('#sheet').classList.remove('lock');shFn=null;$('#shBody').innerHTML='';
+}
+$('#sheet').addEventListener('click',e=>{
+  if(e.target.id==='sheet'||e.target.closest('#shX')){closeSheet();return;}
+  const b=e.target.closest('[data-act]');if(b&&shFn&&!b.disabled)shFn(b.dataset.act,b);
+});
+function askText({title,label,value='',multi=false,type='text',ok='✓ บันทึก',note=''}){
+  return new Promise(res=>{
+    const inp=multi?`<textarea id="askv">${esc(value)}</textarea>`:
+      `<input id="askv" type="${type==='pin'?'password':'text'}" ${type==='pin'?'inputmode="numeric" class="pinin" autocomplete="off"':''} value="${esc(value)}">`;
+    let done=false;
+    openSheet(title,`${note?`<div class="note">${note}</div>`:''}<label class="fld"><span>${label}</span>${inp}</label>
+      <div class="acts"><button class="act" data-act="cancel">ยกเลิก</button><button class="act pri" data-act="ok">${ok}</button></div>`,
+      act=>{done=true;const v=$('#askv').value;closeSheet();res(act==='ok'?v:null);});
+    const el=$('#askv');setTimeout(()=>el.focus(),60);
+    if(!multi)el.addEventListener('keydown',e=>{if(e.key==='Enter'){done=true;const v=el.value;closeSheet();res(v);}});
+    const obs=new MutationObserver(()=>{if($('#sheet').classList.contains('hide')){obs.disconnect();if(!done)res(null);}});
+    obs.observe($('#sheet'),{attributes:true});
+  });
+}
+const askPin=(note)=>askText({title:'🔑 PIN หัวหน้า',label:'ใส่ PIN',type:'pin',ok:'ยืนยัน',note});
+
+/* =====================================================================
+   รายการงาน
+   ===================================================================== */
+let JL_TAB=0, SRV_LIST=null;
+function jobRows(){
+  const all=new Map();
+  const tid=CFG.active;
+  if(SRV_LIST)for(const [id,j] of Object.entries(SRV_LIST)){const key=jkey(tid,id);all.set(key,{key,id,machine:j.machine,date:j.date,closed:j.closed,count:j.count,srv:true});}
+  for(const [key,J] of JOBS){
+    if((J.team||'')!==tid)continue;
+    const m=J.meta, e=all.get(key)||{key,id:m.id,count:0};
+    Object.assign(e,{machine:m.machine,date:m.date,closed:e.srv?e.closed:!!m.closed,count:Math.max(e.count||0,Object.keys(m.photos||{}).length),here:true,local:J.local});
+    all.set(key,e);
+  }
+  return [...all.values()].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||a.machine.localeCompare(b.machine));
+}
+function jobsHtml(){
+  const tid=CFG.active, rows=jobRows(), open=rows.filter(r=>!r.closed), closed=rows.filter(r=>r.closed);
+  const list=JL_TAB?closed:open;
+  const items=list.map(r=>`<div class="job${r.key===CUR?' cur':''}" data-act="open" data-jid="${esc(r.key)}">
+      <div><div class="m">${r.closed?'🔒 ':''}${esc(r.machine)}</div><div class="d">📅 ${fmtD(r.date)} • 📷 ${r.count} รูป</div></div>
+      <div class="st">${r.key===CUR?'กำลังเปิด<br>':''}${!tid?'📱 ในเครื่อง':r.local?'📱 ยังไม่ส่ง':'☁️ ทีม'}</div></div>`).join('');
+  const t=actTeam();
+  return `<div class="job" data-act="team" style="background:#eef4fb"><div><div class="m">👥 ${t?esc(t.name):'ใช้ในเครื่องอย่างเดียว'}</div><div class="d">${CFG.teams.length>1?'แตะเพื่อสลับทีม':t?'แตะเพื่อจัดการทีม':'แตะเพื่อเชื่อมต่อทีม'}</div></div><div class="st">🔀</div></div>
+    <label class="fld"><span>รหัสเครื่องจักร</span><input id="nj_m" placeholder="เช่น FAN-01" autocapitalize="characters" autocomplete="off"></label>
+    <label class="fld"><span>วันที่</span><input id="nj_d" type="date" value="${today()}"></label>
+    <div class="acts"><button class="act big" data-act="create">➕ เริ่มงาน / เข้าร่วมงาน</button></div>
+    <div class="note">ถ้าเพื่อนเริ่มงานรหัสเครื่องและวันที่เดียวกันไว้แล้ว จะเข้าร่วมงานเดียวกันอัตโนมัติ</div>
+    <div class="tabs"><button data-act="tab0" class="${JL_TAB?'':'on'}">🔧 กำลังทำ (${open.length})</button><button data-act="tab1" class="${JL_TAB?'on':''}">🔒 ปิดแล้ว (${closed.length})</button></div>
+    <div id="jl">${items||`<div class="empty-list">${actTeam()&&!SRV_LIST?'⏳ กำลังโหลดรายการจากทีม...':'ยังไม่มีงาน'}</div>`}</div>`;
+}
+async function jobsSheet(){
+  const lock=!CUR;
+  const handler=async(act,el)=>{
+    if(act==='tab0'||act==='tab1'){JL_TAB=act==='tab1'?1:0;refresh();return;}
+    if(act==='open'){await openJob(el.dataset.jid);return;}
+    if(act==='team'){teamSheet();return;}
+    if(act==='create'){
+      const m=$('#nj_m').value.trim().toUpperCase().replace(/\s+/g,' ');
+      const d=$('#nj_d').value||today();
+      if(!m){toast('กรุณากรอกรหัสเครื่องจักร');$('#nj_m').focus();return;}
+      const jid=mkId(m,d), key=jkey(CFG.active,jid), rows=jobRows();
+      if(rows.some(r=>r.key===key)){await openJob(key);toast(`เข้าร่วมงาน ${m} ✓`);return;}
+      const other=rows.find(r=>!r.closed&&r.machine===m);
+      if(other&&confirm(`มีงาน ${m} วันที่ ${fmtD(other.date)} ที่ยังไม่ปิด\n\nกด OK = เข้าร่วมงานนั้น\nกด Cancel = สร้างงานใหม่วันที่ ${fmtD(d)}`)){await openJob(other.key);return;}
+      const meta=norm({id:jid,machine:m,date:d,pages:clone(TPL||defPages()),closed:false,updated:0});
+      JOBS.set(key,{meta,local:true,team:CFG.active});await saveJob(key);
+      await openJob(key);toast(`เริ่มงาน ${m} แล้ว ✓`);kick();
+    }
+  };
+  const refresh=()=>{if(!$('#sheet').classList.contains('hide')&&$('#nj_m')){const v=$('#nj_m').value,d=$('#nj_d').value;
+    $('#shBody').innerHTML=jobsHtml();$('#nj_m').value=v;$('#nj_d').value=d;}};
+  openSheet('📋 รายการงาน'+(actTeam()?' — '+actTeam().name:''),jobsHtml(),handler,lock);
+  const t=actTeam();
+  if(t){try{const L=(await api({a:'list'},30000,t)).jobs;if(CFG.active===t.id)SRV_LIST=L;setNet('on');}catch(e){netFail(e);}refresh();}
+}
+
+async function openJob(jid){
+  if(!JOBS.has(jid)){
+    const i=jid.indexOf('::'), tid=jid.slice(0,i), t=team(tid);
+    if(!t){toast('⚠️ ไม่พบงานนี้ในเครื่อง');return;}
+    toast('กำลังโหลดงาน...',0);
+    try{const r=await api({a:'get',job:jid.slice(i+2)},30000,t);JOBS.set(jid,{meta:r.meta,local:false,team:tid});await saveJob(jid);setNet('on');}
+    catch(e){netFail(e);toast('⚠️ โหลดงานไม่ได้: '+(e.message||'ไม่มีสัญญาณ'));return;}
+  }
+  CUR=jid;await DB.put('kv','cur',jid);
+  IMGS=new Map((await DB.byJob(jid)).map(r=>[r.pid,r]));
+  swapFrom=null;document.body.classList.remove('swapping');
+  $('#sheet').classList.remove('lock');closeSheet();
+  renderJob();window.scrollTo(0,0);toast(`เปิดงาน ${VIEW.machine} ✓`);
+  kick(300);
+}
+
+/* =====================================================================
+   เชื่อมต่อเซิร์ฟเวอร์ + ซิงก์
+   ===================================================================== */
+async function api(body,timeout=30000,cfg=actTeam()){
+  if(!cfg||!cfg.url)throw new Error('ยังไม่ได้ตั้งค่าเซิร์ฟเวอร์');
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),timeout);
+  try{
+    const r=await fetch(cfg.url,{method:'POST',body:JSON.stringify({...body,key:cfg.key}),signal:ctl.signal,redirect:'follow'});
+    let j;try{j=await r.json();}catch(e){throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (ตรวจลิงก์ /exec)');}
+    if(!j.ok){const e=new Error(j.err||'เกิดข้อผิดพลาด');e.srv=true;e.code=j.code;throw e;}
+    return j;
+  }finally{clearTimeout(t);}
+}
+function setNet(s,msg=''){NET=s;NETMSG=msg;updChip();}
+function netFail(e){if(e&&e.srv)setNet('err',e.message);else setNet('off');}
+
+async function countPending(){
+  const q=await DB.entries('q');const sv=k=>{const J=JOBS.get(k);return J&&team(J.team);};
+  let n=q.filter(x=>sv(x[1])).length;for(const [k,a] of OPS)if(sv(k))n+=a.length;PEND=n;return q;
+}
+async function updChip(){
+  const c=$('#chip');await countPending();
+  let cls='',txt;
+  if(!(CUR?jobTeam(CUR):actTeam())&&!PEND){txt='📱 ในเครื่อง';}
+  else if(SYNCING){txt='🔄';cls='pend';}
+  else if(NET==='err'){txt='⚠️';cls='err';}
+  else if(PEND>0){txt=`⏳ ${PEND}`;cls=NET==='off'?'off':'pend';}
+  else if(NET==='off'){txt='📵';cls='off';}
+  else if(NET==='on'){txt='☁️ ✓';cls='ok';}
+  else txt='☁️';
+  c.className=cls;c.textContent=txt;
+}
+
+let kickT;
+function kick(ms=1200){clearTimeout(kickT);kickT=setTimeout(syncAll,ms);}
+
+async function syncAll(){
+  if(!CFG.teams.length)return updChip();
+  if(SYNCING){kick(2000);return;}
+  SYNCING=true;updChip();
+  const sig0=CUR?sigOf(CUR):'';
+  try{
+    const q=await DB.entries('q');
+    const jids=new Set(q.map(x=>x[1]));
+    for(const k of OPS.keys())jids.add(k);
+    for(const [k,J] of JOBS)if(J.local)jids.add(k);
+    if(CUR)jids.add(CUR);
+    let err=null;
+    for(const jid of jids){
+      const J=JOBS.get(jid);if(!J||!team(J.team))continue;
+      try{await syncJob(jid,q.filter(x=>x[1]===jid).map(x=>x[0]));}
+      catch(e){if(!err||(CUR&&jid===CUR))err=e;}
+    }
+    if(err)throw err;
+    setNet('on');
+  }catch(e){netFail(e);}
+  finally{SYNCING=false;}
+  if(CUR&&JOBS.has(CUR)&&sigOf(CUR)!==sig0)renderJob();
+  updChip();
+  if(CUR&&NET==='on')fetchMissing();
+}
+function sigOf(jid){const J=JOBS.get(jid);return J?`${J.meta.updated}|${(OPS.get(jid)||[]).length}|${J.meta.closed}`:'';}
+
+async function syncJob(jid,pids){
+  const J=JOBS.get(jid), T=team(J.team), JID=J.meta.id;
+  const base=()=>({machine:J.meta.machine,date:J.meta.date,pages:J.meta.pages});
+  if(J.local){
+    const r=await api({a:'create',job:JID,meta:base()},30000,T);
+    J.meta=r.meta;J.local=false;await saveJob(jid);
+  }
+  for(const pid of pids){
+    if(J.meta.closed)break;
+    let rec=(jid===CUR&&IMGS.get(pid))||await DB.get('imgs',pid);
+    if(!rec||rec.up){await DB.del('q',pid);continue;}
+    const sent={slot:rec.slot,crop:rec.crop};
+    try{
+      const r=await api({a:'upload',job:JID,pid,slot:rec.slot,w:rec.w,h:rec.h,ts:rec.ts,crop:rec.crop||null,meta:base(),
+        data:rec.src.slice(rec.src.indexOf(',')+1)},120000,T);
+      J.meta=r.meta;
+    }catch(e){if(e.srv&&e.code==='closed'){J.meta.closed=true;break;}throw e;}
+    rec=(jid===CUR&&IMGS.get(pid))||await DB.get('imgs',pid)||rec;
+    rec.up=true;await DB.put('imgs',pid,rec);await DB.del('q',pid);
+    if(J.meta.photos[pid]){
+      if(rec.slot!==sent.slot)queueOp(jid,{t:'move',pid,slot:rec.slot});
+      if(rec.crop&&JSON.stringify(rec.crop)!==JSON.stringify(sent.crop))queueOp(jid,{t:'crop',pid,...rec.crop});
+    }
+    await saveJob(jid);
+  }
+  const ops=OPS.get(jid)||[];
+  if(ops.length&&!J.meta.closed){
+    const n=ops.length;
+    try{const r=await api({a:'ops',job:JID,ops:ops.slice(0,n)},30000,T);J.meta=r.meta;}
+    catch(e){if(!(e.srv&&e.code==='closed'))throw e;}
+    OPS.set(jid,(OPS.get(jid)||[]).slice(n));await saveOps(jid);
+  }
+  try{
+    const r=await api({a:'get',job:JID,since:J.meta.updated},30000,T);
+    if(!r.same)J.meta=r.meta;
+  }catch(e){if(e.srv&&e.code==='notfound'){J.local=true;}else throw e;}
+  await saveJob(jid);
+}
+function queueOp(jid,o){const a=OPS.get(jid)||[];a.push(o);OPS.set(jid,a);saveOps(jid);}
+
+let FETCHING=false;
+async function fetchMissing(all=false){
+  if(!CUR||FETCHING)return;
+  const T=jobTeam(CUR);if(!T)return;
+  FETCHING=true;const jid=CUR, JID=JOBS.get(CUR).meta.id;
+  try{
+    const want=[];
+    for(const id of ORDER){const ps=slotPhotos(id);const ch=chosen(id);
+      ps.sort((a,b)=>(b.pid===ch.pid)-(a.pid===ch.pid)).forEach(p=>{if(!IMGS.has(p.pid)&&!p.local)want.push(p.pid);});}
+    if(all)for(const pid of Object.keys(VIEW.photos))if(!IMGS.has(pid)&&!want.includes(pid))want.push(pid);
+    for(const pid of want){
+      if(CUR!==jid)break;
+      const p=VIEW.photos[pid];if(!p)continue;
+      const r=await api({a:'photo',job:JID,pid},60000,T);
+      const rec={pid,job:jid,slot:p.slot,w:p.w,h:p.h,ts:p.ts,src:'data:image/jpeg;base64,'+r.data,up:true};
+      await DB.put('imgs',pid,rec);
+      if(CUR===jid){IMGS.set(pid,rec);renderSlot(p.slot);}
+    }
+  }catch(e){netFail(e);}
+  finally{FETCHING=false;}
+}
+
+/* =====================================================================
+   อ่านและย่อรูป
+   ===================================================================== */
+function readImage(file,max=1800,keepPng=false){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file),im=new Image();
+    im.onload=()=>{
+      let w=im.naturalWidth,h=im.naturalHeight;const s=Math.min(1,max/Math.max(w,h));
+      w=Math.round(w*s);h=Math.round(h*s);
+      const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+      const png=keepPng&&file.type==='image/png';
+      if(!png){x.fillStyle='#fff';x.fillRect(0,0,w,h);}
+      x.imageSmoothingQuality='high';x.drawImage(im,0,0,w,h);URL.revokeObjectURL(url);
+      res({src:c.toDataURL(png?'image/png':'image/jpeg',.85),w,h});
+    };
+    im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('อ่านรูปไม่ได้'))};
+    im.src=url;
+  });
+}
+async function addPhoto(file,slot){
+  const r=await readImage(file);const pid=uid();
+  const rec={pid,job:CUR,slot,w:r.w,h:r.h,ts:Date.now(),src:r.src,up:false,crop:null};
+  IMGS.set(pid,rec);await DB.put('imgs',pid,rec);await DB.put('q',pid,CUR);
+  return pid;
+}
+async function delPhoto(pid){
+  const rec=IMGS.get(pid);
+  IMGS.delete(pid);await DB.del('imgs',pid);await DB.del('q',pid);
+  if(rec&&!rec.up&&!VIEW.photos[pid]){VIEW.deleted[pid]=1;queueOp(CUR,{t:'del',pid});kick();}
+  else doOp({t:'del',pid});
+}
+function movePhoto(pid,slot){
+  const rec=IMGS.get(pid);
+  if(rec&&!rec.up&&!VIEW.photos[pid]){rec.slot=slot;DB.put('imgs',pid,rec);}
+  else doOp({t:'move',pid,slot});
+}
+function setCrop(pid,c){
+  const rec=IMGS.get(pid);
+  if(rec&&!rec.up&&!VIEW.photos[pid]){rec.crop=c;DB.put('imgs',pid,rec);}
+  else doOp({t:'crop',pid,...c});
+}
+
+/* =====================================================================
+   แตะในหน้า
+   ===================================================================== */
+const pages=$('#pages');
+pages.addEventListener('click',e=>{
+  const pa=e.target.closest('[data-pa]');
+  if(pa){if(!pa.disabled)pageAction(+pa.closest('.pctl').dataset.pi,pa.dataset.pa);return;}
+  if(e.target.closest('.logo')){if(!VIEW.closed)$('#fLogo').click();return;}
+  const tt=e.target.closest('.ptitle');if(tt){editTitle(+tt.dataset.pi);return;}
+  const cp=e.target.closest('.cap');if(cp){editCap(cp.dataset.id);return;}
+  const sl=e.target.closest('.slot');if(!sl)return;
+  const id=sl.dataset.id;
+  if(swapFrom){doSwap(swapFrom,id);return;}
+  slotSheet(id);
+});
+pages.addEventListener('change',e=>{
+  const k=e.target.dataset.k;if(!k)return;
+  const pi=+e.target.closest('.pctl').dataset.pi, P=clone(VIEW.pages), p=P[pi];
+  if(k==='layout')p.layout=e.target.value;else if(k==='size')p.size=+e.target.value;else if(k==='cap')p.cap=e.target.checked;
+  setPages(P);reportOverflow(`หน้า ${pi+1} ปรับแล้ว ✓`);
+});
+function pageAction(pi,a){
+  if(VIEW.closed)return;
+  const P=clone(VIEW.pages);
+  if(a==='bulk'){bulkStart=pi;$('#fMulti').click();return;}
+  if(a==='up'&&pi>0)[P[pi-1],P[pi]]=[P[pi],P[pi-1]];
+  else if(a==='down'&&pi<P.length-1)[P[pi+1],P[pi]]=[P[pi],P[pi+1]];
+  else if(a==='add'){P.splice(pi+1,0,{id:'g'+uid(),t:'หัวข้อใหม่',layout:'222',size:P[pi].size,cap:false});setPages(P);toast(`เพิ่มหน้า ${pi+2} แล้ว ✓ แตะหัวข้อเพื่อแก้ชื่อ`,3000);return;}
+  else if(a==='del'){if(P.length<=1||!confirm(`ลบหน้า ${pi+1} “${P[pi].t}” หรือไม่?`))return;P.splice(pi,1);}
+  else return;
+  setPages(P);
+}
+async function editTitle(pi){
+  if(VIEW.closed)return;
+  const v=await askText({title:`✏️ หัวข้อหน้า ${pi+1}`,label:'ชื่อหัวข้อ',value:VIEW.pages[pi].t});
+  if(v==null)return;const P=clone(VIEW.pages);P[pi].t=v.replace(/\s*\n\s*/g,' ').trim();setPages(P);
+}
+async function editCap(id){
+  if(VIEW.closed)return;
+  const v=await askText({title:'📝 ข้อเสนอแนะ / Alarm code',label:'ข้อความใต้รูป',value:VIEW.caps[id]||'',multi:true});
+  if(v==null)return;if(doOp({t:'cap',slot:id,v}))renderSlot(id);
+}
+function slotLabel(id){const pi=VIEW.pages.findIndex(p=>id.startsWith(p.id+'-'));return `หน้า ${pi+1} • รูปที่ ${+id.split('-').pop()+1}`;}
+
+function slotSheet(id){
+  const ps=slotPhotos(id), ch=chosen(id), closed=VIEW.closed;
+  let h='';
+  if(ps.length>1){
+    h+=`<div class="note warn">มี <b>${ps.length} รูป</b> ในช่องนี้ แตะรูปที่จะใช้ในรายงาน</div><div class="thumbs">`+
+      ps.map(p=>{const r=IMGS.get(p.pid);return `<div class="th${p.pid===ch.pid?' on':''}" data-act="choose" data-pid="${p.pid}">${r?`<img src="${r.src}">`:'⏳'}<i>${fmtT(p.ts)}</i></div>`;}).join('')+'</div>';
+  }
+  if(closed)h+='<div class="note">🔒 งานนี้ปิดแล้ว ดูได้อย่างเดียว</div>';
+  else if(!ch)h+=`<div class="acts"><button class="act big" data-act="cam">📷 ถ่ายรูป</button><button class="act full" data-act="gal">🖼️ เลือกจากคลังรูป</button></div>`;
+  else h+=`<div class="acts">
+      <button class="act" data-act="crop">✥ จัดตำแหน่ง / ซูม</button>
+      <button class="act" data-act="swap">⇄ ย้าย / สลับช่อง</button>
+      <button class="act" data-act="recam">📷 ถ่ายใหม่แทน</button>
+      <button class="act" data-act="regal">🖼️ เลือกรูปใหม่แทน</button>
+      ${ps.length>1?'<button class="act warn" data-act="others">🧹 ลบรูปที่ไม่ได้เลือก</button>':''}
+      <button class="act warn${ps.length>1?'':' full'}" data-act="del">✕ ลบรูปนี้</button></div>`;
+  openSheet(`📷 ${slotLabel(id)}`,h,async(act,el)=>{
+    if(act==='cam'||act==='gal'||act==='recam'||act==='regal'){
+      target={slot:id,replace:act.startsWith('re')?ch.pid:null};
+      closeSheet();(act.endsWith('cam')?$('#fCam'):$('#fGal')).click();return;
+    }
+    if(act==='choose'){if(closed)return;if(doOp({t:'choose',slot:id,pid:el.dataset.pid})){renderSlot(id);slotSheet(id);}return;}
+    if(act==='crop'){cropEditor(ch.pid,id);return;}
+    if(act==='swap'){swapFrom=id;closeSheet();$(`.slot[data-id="${id}"]`).classList.add('swapsrc');document.body.classList.add('swapping');
+      toast('แตะช่องปลายทางเพื่อย้าย/สลับ (แตะช่องเดิมเพื่อยกเลิก)',0);return;}
+    if(act==='del'){if(!confirm('ลบรูปนี้หรือไม่?'))return;await delPhoto(ch.pid);closeSheet();renderSlot(id);toast('ลบรูปแล้ว');return;}
+    if(act==='others'){if(!confirm(`ลบรูปอื่นในช่องนี้ ${ps.length-1} รูป เหลือเฉพาะรูปที่เลือกไว้?`))return;
+      for(const p of ps)if(p.pid!==ch.pid)await delPhoto(p.pid);closeSheet();renderSlot(id);toast('ลบรูปที่ไม่ได้เลือกแล้ว');}
+  });
+}
+
+function doSwap(a,b){
+  $$('.slot.swapsrc').forEach(s=>s.classList.remove('swapsrc'));
+  document.body.classList.remove('swapping');swapFrom=null;
+  if(a===b){toast('ยกเลิกการย้าย');return;}
+  if(VIEW.closed)return;
+  const pa=slotPhotos(a), pb=slotPhotos(b), ca=VIEW.choice[a], cb=VIEW.choice[b];
+  pa.forEach(p=>movePhoto(p.pid,b));pb.forEach(p=>movePhoto(p.pid,a));
+  if(cb)doOp({t:'choose',slot:a,pid:cb});if(ca)doOp({t:'choose',slot:b,pid:ca});
+  const xa=VIEW.caps[a]||'', xb=VIEW.caps[b]||'';
+  if(xa||xb){doOp({t:'cap',slot:a,v:xb});doOp({t:'cap',slot:b,v:xa});}
+  renderSlot(a);renderSlot(b);toast(pb.length?'สลับเรียบร้อย ✓':'ย้ายเรียบร้อย ✓');
+}
+
+function cropEditor(pid,slot){
+  const rec=IMGS.get(pid);if(!rec){toast('⏳ รูปยังโหลดไม่เสร็จ');return;}
+  const d={w:rec.w,h:rec.h,...cropOf(pid)};
+  openSheet('✥ จัดตำแหน่งรูป',`<div class="note">ลากรูปเพื่อเลือกส่วนที่ต้องการ และเลื่อนแถบเพื่อซูม</div>
+    <div class="cropbox" id="cbox"><img id="cimg" src="${rec.src}"></div>
+    <label class="fld"><span>🔍 ซูม</span><input type="range" id="czoom" min="1" max="3" step="0.05" value="${d.z}"></label>
+    <div class="acts"><button class="act" data-act="reset">↺ คืนค่า</button><button class="act pri" data-act="ok">✓ บันทึก</button></div>`,
+    act=>{
+      if(act==='reset'){d.z=1;d.px=.5;d.py=.5;$('#czoom').value=1;place($('#cimg'),d);}
+      if(act==='ok'){setCrop(pid,{z:d.z,px:d.px,py:d.py});closeSheet();renderSlot(slot);toast('บันทึกตำแหน่งแล้ว ✓');}
+    });
+  const img=$('#cimg'),box=$('#cbox');place(img,d);
+  $('#czoom').oninput=e=>{d.z=+e.target.value;place(img,d);};
+  let dr=null;
+  box.onpointerdown=e=>{dr={x:e.clientX,y:e.clientY};try{box.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault();};
+  box.onpointermove=e=>{if(!dr)return;const r=box.getBoundingClientRect(),g=geom(d);
+    const ex=r.width*(g.W/100-1),ey=r.height*(g.H/100-1);
+    if(ex>.5)d.px=Math.min(1,Math.max(0,d.px-(e.clientX-dr.x)/ex));
+    if(ey>.5)d.py=Math.min(1,Math.max(0,d.py-(e.clientY-dr.y)/ey));
+    dr={x:e.clientX,y:e.clientY};place(img,d);};
+  box.onpointerup=box.onpointercancel=()=>{dr=null;};
+}
+
+/* ===== รับรูปจากกล้อง / คลัง ===== */
+async function onPick(e){
+  const f=e.target.files[0];e.target.value='';if(!f||!target||!CUR)return;
+  if(VIEW.closed){toast('🔒 งานนี้ปิดแล้ว');return;}
+  const {slot,replace}=target;target=null;
+  try{
+    toast('กำลังเตรียมรูป...',0);
+    const pid=await addPhoto(f,slot);
+    if(replace)await delPhoto(replace);
+    if(slotPhotos(slot).length>1)doOp({t:'choose',slot,pid});
+    renderSlot(slot);toast(jobTeam(CUR)?'บันทึกรูปแล้ว ✓ กำลังส่งให้ทีม':'บันทึกรูปแล้ว ✓');kick(400);
+  }catch(err){toast('⚠️ เปิดรูปนี้ไม่ได้ ลองใช้ไฟล์ JPG หรือ PNG');}
+}
+$('#fCam').addEventListener('change',onPick);
+$('#fGal').addEventListener('change',onPick);
+$('#fMulti').addEventListener('change',async e=>{
+  const files=[...e.target.files];e.target.value='';if(!files.length||!CUR||VIEW.closed)return;
+  const pid0=(VIEW.pages[bulkStart]||VIEW.pages[0]).id;
+  const start=Math.max(0,ORDER.findIndex(id=>id.startsWith(pid0+'-')));
+  const empties=ORDER.slice(start).filter(id=>!slotPhotos(id).length);
+  if(!empties.length){toast('⚠️ ไม่มีช่องว่างแล้ว');return;}
+  const n=Math.min(files.length,empties.length);let ok=0;
+  for(let i=0;i<n;i++){toast(`กำลังเตรียมรูป ${i+1}/${n}...`,0);
+    try{await addPhoto(files[i],empties[i]);renderSlot(empties[i]);ok++;}catch(err){}}
+  const left=files.length-n;
+  toast(`เพิ่มแล้ว ${ok} รูป ✓`+(left>0?` (เหลือ ${left} รูปที่ไม่มีช่องว่าง)`:''),3500);kick(400);
+});
+
+/* ===== โลโก้ ===== */
+$('#fLogo').addEventListener('change',async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{LOGO=await readImage(f,600,true);await DB.put('kv','logo',LOGO);renderLogo();toast('ใส่โลโก้แล้ว ✓');}
+  catch(err){toast('⚠️ เปิดรูปโลโก้ไม่ได้');return;}
+  if(actTeam()){
+    const pin=await askPin('ใส่ PIN ผู้ดูแล เพื่อให้ทุกเครื่องทุกทีมใช้โลโก้นี้ด้วย<br>(กดยกเลิก = ใช้เฉพาะเครื่องนี้)');
+    if(pin==null)return;
+    try{await api({a:'setLogo',pin,logo:LOGO});toast('ส่งโลโก้ให้ทั้งทีมแล้ว ✓');}catch(e){toast('⚠️ '+e.message);}
+  }
+});
+
+/* =====================================================================
+   เมนู
+   ===================================================================== */
+function menuSheet(){
+  const cl=VIEW&&VIEW.closed, has=!!CUR, dis=c=>c?' disabled':'';
+  openSheet('☰ เมนู',`<div class="acts">
+    <div class="sec">งาน</div>
+    <button class="act" data-act="jobs">📋 รายการงาน</button>
+    <button class="act" data-act="team">🔀 ทีม: ${esc(actTeam()?actTeam().name:'ในเครื่อง')}</button>
+    <button class="act" data-act="sync"${dis(!CFG.teams.length)}>🔄 ซิงก์ตอนนี้</button>
+    <button class="act" data-act="close"${dis(!has||cl)}>✅ ปิดงาน</button>
+    <button class="act" data-act="reopen"${dis(!has||!cl)}>🔓 เปิดงานอีกครั้ง</button>
+    <div class="sec">รูปและหน้า</div>
+    <button class="act" data-act="bulk"${dis(!has||cl)}>➕ เพิ่มหลายรูป</button>
+    <button class="act" data-act="addpage"${dis(!has||cl)}>📄➕ เพิ่มหน้า</button>
+    <label class="fld" style="grid-column:span 2;margin:0"><span>📐 ขนาดรูปทุกหน้า</span>
+      <select id="mn_size"${dis(!has||cl)}><option value="">— เลือกขนาด —</option>${SIZES.map(s=>`<option value="${s}">${s}×${s} ซม.</option>`).join('')}</select></label>
+    <div class="sec">ส่งออก / แบ่งปัน</div>
+    <button class="act" data-act="pdf"${dis(!has)}>🖨️ PDF</button>
+    <button class="act" data-act="word"${dis(!has)}>📄 Word</button>
+    <button class="act" data-act="share"${dis(!has)}>📤 ส่งไฟล์งาน (LINE)</button>
+    <button class="act" data-act="import">📥 รวมไฟล์งาน / เปิดแม่แบบ</button>
+    <div class="sec">แม่แบบและตั้งค่า</div>
+    <button class="act" data-act="tpl"${dis(!has)}>📑 บันทึกแม่แบบ</button>
+    <button class="act" data-act="reset"${dis(!has||cl)}>↺ แม่แบบเริ่มต้น</button>
+    <button class="act" data-act="logo">🖼️ โลโก้</button>
+    <button class="act" data-act="settings">⚙️ ตั้งค่าทีม / เชื่อมต่อ</button>
+    <button class="act warn full" data-act="remove"${dis(!has)}>🗑️ ลบงานนี้ออกจากเครื่องนี้</button>
+  </div>`,async act=>{
+    const go={
+      jobs:()=>jobsSheet(), sync:()=>{closeSheet();toast('กำลังซิงก์...');syncAll();},
+      close:()=>closeJob(false), reopen:()=>closeJob(true),
+      bulk:()=>{closeSheet();bulkStart=0;$('#fMulti').click();},
+      addpage:()=>{closeSheet();const P=clone(VIEW.pages);const last=P[P.length-1];
+        P.push({id:'g'+uid(),t:'หัวข้อใหม่',layout:'222',size:last?last.size:6,cap:false});setPages(P);
+        const w=$$('.pwrap').pop();w&&w.scrollIntoView({behavior:'smooth',block:'start'});toast('เพิ่มหน้าใหม่แล้ว ✓ แตะหัวข้อเพื่อแก้ชื่อ',3000);},
+      pdf:()=>{closeSheet();doPdf();}, word:()=>{closeSheet();doWord();},
+      share:()=>{closeSheet();shareJob();}, import:()=>{closeSheet();$('#fJson').click();},
+      tpl:()=>saveTemplate(), reset:()=>{if(!confirm('คืนหัวข้อและรูปแบบหน้าเป็นแม่แบบ OVERHAUL พัดลม 7 หน้า?'))return;
+        TPL=null;DB.del('kv','tpl');closeSheet();setPages(defPages());toast('คืนค่าแม่แบบเริ่มต้นแล้ว ✓');},
+      logo:()=>{closeSheet();$('#fLogo').click();}, settings:()=>teamSheet(), team:()=>teamSheet(), remove:()=>removeJob()
+    };
+    go[act]&&go[act]();
+  });
+  const ms=$('#mn_size');if(ms)ms.onchange=()=>{const v=+ms.value;if(!v)return;closeSheet();
+    const P=clone(VIEW.pages);P.forEach(p=>p.size=v);setPages(P);reportOverflow(`ตั้งขนาดรูปทุกหน้าเป็น ${v}×${v} ซม. แล้ว ✓`);};
+}
+
+/* ===== ปิดงาน / เปิดงานอีกครั้ง ===== */
+async function closeJob(reopen){
+  const jid=CUR;
+  if(!reopen){
+    const empty=ORDER.filter(id=>!slotPhotos(id).length).length;
+    const dup=ORDER.filter(id=>slotPhotos(id).length>1).length;
+    if((empty||dup)&&!confirm(`${empty?`ยังมีช่องว่าง ${empty} ช่อง\n`:''}${dup?`มี ${dup} ช่องที่มีรูปซ้ำ (จะใช้รูปที่เลือกไว้)\n`:''}\nต้องการปิดงานหรือไม่?`))return;
+  }
+  const pin=await askPin(reopen?'ใส่ PIN เพื่อเปิดงานให้แก้ไขได้อีกครั้ง':'เมื่อปิดงานแล้ว จะไม่มีใครถ่ายหรือแก้ไขงานนี้ได้');
+  if(pin==null)return;
+  const J=JOBS.get(jid), T=team(J.team);
+  if(T){
+    toast('กำลังส่งข้อมูลที่ค้าง...',0);
+    while(SYNCING)await sleep(300);
+    await syncAll();
+    const q=await DB.entries('q');const left=q.filter(x=>x[1]===jid).length+(OPS.get(jid)||[]).length;
+    if(left||J.local){toast(`⚠️ ยังมี ${left||'ข้อมูล'} รายการรอส่ง ต้องมีสัญญาณก่อน${reopen?'เปิด':'ปิด'}งาน`,4500);return;}
+    try{const r=await api({a:reopen?'reopen':'close',job:J.meta.id,pin},30000,T);J.meta=r.meta;await saveJob(jid);}
+    catch(e){toast('⚠️ '+e.message,3500);return;}
+  }else{
+    if(CFG.pin&&pin!==CFG.pin){toast('⚠️ PIN ไม่ถูกต้อง');return;}
+    J.meta.closed=!reopen;await saveJob(jid);
+  }
+  renderJob();toast(reopen?'🔓 เปิดงานให้แก้ไขได้แล้ว':'✅ ปิดงานเรียบร้อย',3000);
+}
+
+async function removeJob(){
+  const jid=CUR;
+  const q=(await DB.entries('q')).filter(x=>x[1]===jid);
+  const left=q.length+(OPS.get(jid)||[]).length;
+  const msg=left?`⚠️ งานนี้ยังมี ${left} รายการที่ยังไม่ได้ส่งขึ้นเซิร์ฟเวอร์ ถ้าลบจะหายถาวร!\n\nยืนยันลบหรือไม่?`:
+    `ลบงาน ${VIEW.machine} (${fmtD(VIEW.date)}) ออกจากเครื่องนี้?\n${jobTeam(jid)&&!JOBS.get(jid).local?'(ข้อมูลบน Google Drive ยังอยู่ เปิดใหม่ได้จากรายการงาน)':'(ข้อมูลจะหายถาวร)'}`;
+  if(!confirm(msg))return;
+  for(const k of await DB.keysByJob(jid))await DB.del('imgs',k);
+  for(const [k] of q)await DB.del('q',k);
+  OPS.delete(jid);await DB.del('ops',jid);JOBS.delete(jid);await DB.del('jobs',jid);
+  CUR=null;VIEW=null;IMGS=new Map();await DB.del('kv','cur');
+  $('#pages').innerHTML='';document.body.classList.remove('closed');updBar();updChip();
+  toast('ลบงานออกจากเครื่องแล้ว');jobsSheet();
+}
+
+/* ===== ทีม: เพิ่ม / สลับ / แก้ / ลบ ===== */
+async function pendingOfTeam(tid){
+  const keys=new Set([...JOBS].filter(([k,J])=>(J.team||'')===tid).map(x=>x[0]));
+  const q=(await DB.entries('q')).filter(x=>keys.has(x[1])).length;
+  let o=0;for(const k of keys)o+=(OPS.get(k)||[]).length;
+  return q+o;
+}
+async function teamSheet(){
+  const pend={};for(const t of CFG.teams)pend[t.id]=await pendingOfTeam(t.id);
+  const row=(tid,name,sub)=>`<div class="job${CFG.active===tid?' cur':''}" data-act="use" data-tid="${tid}">
+      <div><div class="m">${tid?'👥':'📱'} ${esc(name)}</div><div class="d">${sub}</div></div>
+      <div class="st">${CFG.active===tid?'✓ ใช้อยู่':'แตะเพื่อสลับ'}${tid?`<br><button class="act" style="padding:4px 9px;font-size:12px;margin-top:4px" data-act="edit" data-tid="${tid}">✏️ แก้</button>`:''}</div></div>`;
+  openSheet('🔀 ทีม',`<div class="note">แตะทีมเพื่อสลับ งานจะแยกตามทีม และรูปที่ค้างส่งของทุกทีมจะส่งต่อเองเบื้องหลัง</div>
+    ${CFG.teams.map(t=>row(t.id,t.name,`รหัสทีม: ${esc(t.key)}${pend[t.id]?` • ⏳ ค้างส่ง ${pend[t.id]}`:''}`)).join('')}
+    ${row('','ใช้ในเครื่องอย่างเดียว','ไม่ส่งข้อมูลให้ทีม')}
+    <div class="acts" style="margin-top:8px"><button class="act big" data-act="add">➕ เพิ่มทีม</button>
+    <button class="act full" data-act="pin">🔑 PIN หัวหน้า (โหมดในเครื่อง)</button></div>`,
+    async(act,el)=>{
+      if(act==='use')return switchTeam(el.dataset.tid);
+      if(act==='edit')return teamForm(team(el.dataset.tid));
+      if(act==='add')return teamForm(null);
+      if(act==='pin'){const v=await askText({title:'🔑 PIN โหมดในเครื่อง',label:'PIN (เว้นว่าง = ไม่ใช้)',type:'pin',value:CFG.pin});
+        if(v!=null){CFG.pin=v.trim();await saveCfg();toast('บันทึก PIN แล้ว ✓');}teamSheet();}
+    });
+}
+function teamForm(t){
+  const url=t?t.url:(CFG.teams[0]?CFG.teams[0].url:'');
+  openSheet(t?`✏️ แก้ไข ${t.name}`:'➕ เพิ่มทีม',`
+    <div class="note">ทุกทีมใช้ลิงก์ /exec เดียวกันได้ ต่างกันที่ <b>รหัสทีม</b> (หัวหน้าตั้งไว้ใน Code.gs)<br>ชื่อทีมจะดึงจากเซิร์ฟเวอร์ให้อัตโนมัติ</div>
+    <label class="fld"><span>ลิงก์เซิร์ฟเวอร์ (ลงท้ายด้วย /exec)</span><input id="st_url" value="${esc(url)}" placeholder="https://script.google.com/macros/s/.../exec"></label>
+    <label class="fld"><span>รหัสทีม</span><input id="st_key" value="${esc(t?t.key:'')}" autocomplete="off"></label>
+    <div class="acts">${t?'<button class="act warn" data-act="del">🗑️ ลบทีมนี้</button>':'<button class="act" data-act="back">← กลับ</button>'}<button class="act pri" data-act="save">🔌 ทดสอบและบันทึก</button></div>`,
+    async act=>{
+      if(act==='back')return teamSheet();
+      if(act==='del')return deleteTeam(t);
+      const c={url:$('#st_url').value.trim(),key:$('#st_key').value.trim()};
+      if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(c.url)){toast('⚠️ ลิงก์ต้องขึ้นต้นด้วย https://script.google.com และลงท้ายด้วย /exec',4000);return;}
+      if(!c.key){toast('กรุณาใส่รหัสทีม');return;}
+      const dup=CFG.teams.find(x=>x.url===c.url&&x.key===c.key&&(!t||x.id!==t.id));
+      if(dup){toast(`⚠️ มีทีมนี้แล้ว (${dup.name})`);return;}
+      toast('กำลังทดสอบ...',0);
+      let r;try{r=await api({a:'ping'},20000,c);}catch(e){toast('⚠️ เชื่อมต่อไม่ได้: '+e.message,4500);return;}
+      if(r.config&&r.config.logo){LOGO=r.config.logo;await DB.put('kv','logo',LOGO);renderLogo();}
+      const name=r.team||c.key;
+      if(t){Object.assign(t,c,{name});await saveCfg();toast(`บันทึก ${name} แล้ว ✓`);if(CUR)renderJob();kick(200);teamSheet();}
+      else{const id='t'+uid();CFG.teams.push({id,name,...c});await saveCfg();toast(`เพิ่ม ${name} แล้ว ✓`);await switchTeam(id);}
+    });
+}
+async function switchTeam(tid){
+  const t=team(tid);
+  if(tid!==''&&!t)return;
+  if(CFG.active!==tid){
+    CFG.active=tid;await saveCfg();SRV_LIST=null;setNet('none');
+    if(CUR&&(JOBS.get(CUR).team||'')!==tid){
+      CUR=null;VIEW=null;IMGS=new Map();await DB.del('kv','cur');
+      $('#pages').innerHTML='';document.body.classList.remove('closed');updBar();
+    }
+  }
+  /* งานที่ทำแบบในเครื่อง ถามว่าจะส่งเข้าทีมนี้ไหม */
+  if(t){
+    const orphan=[...JOBS].filter(([k,J])=>!J.team);
+    if(orphan.length&&confirm(`มีงานที่ทำแบบ “ในเครื่อง” ${orphan.length} งาน\n(${orphan.map(([k,J])=>J.meta.machine).join(', ')})\n\nส่งงานเหล่านี้เข้า ${t.name} หรือไม่?`))
+      for(const [k] of orphan)await rekey(k,tid,true);
+  }
+  toast(t?`ใช้ ${t.name} ✓`:'ใช้งานในเครื่องอย่างเดียว',2500);
+  updChip();kick(200);jobsSheet();
+}
+async function deleteTeam(t){
+  const n=await pendingOfTeam(t.id);
+  if(n){toast(`⚠️ ${t.name} ยังมี ${n} รายการค้างส่ง รอให้ส่งครบก่อนลบ`,4000);return;}
+  if(!confirm(`ลบ ${t.name} ออกจากเครื่องนี้?\nงานของทีมนี้ในเครื่องจะถูกลบ (ข้อมูลบน Google Drive ยังอยู่)`))return;
+  for(const [k,J] of [...JOBS])if(J.team===t.id){
+    for(const pk of await DB.keysByJob(k))await DB.del('imgs',pk);
+    OPS.delete(k);await DB.del('ops',k);JOBS.delete(k);await DB.del('jobs',k);
+  }
+  CFG.teams=CFG.teams.filter(x=>x.id!==t.id);
+  if(CFG.active===t.id)CFG.active=CFG.teams[0]?CFG.teams[0].id:'';
+  await saveCfg();
+  if(CUR&&!JOBS.has(CUR)){CUR=null;VIEW=null;IMGS=new Map();await DB.del('kv','cur');$('#pages').innerHTML='';updBar();}
+  toast(`ลบ ${t.name} แล้ว`);teamSheet();
+}
+/* ย้ายงานในเครื่องไปอยู่ทีมอื่น (เปลี่ยนคีย์) */
+async function rekey(oldKey,tid,markLocal){
+  const J=JOBS.get(oldKey);if(!J)return oldKey;
+  const nk=jkey(tid,J.meta.id);
+  if(nk===oldKey){J.team=tid;await DB.put('jobs',nk,J);return nk;}
+  if(JOBS.has(nk))return oldKey;
+  J.team=tid;if(markLocal)J.local=true;
+  JOBS.delete(oldKey);JOBS.set(nk,J);await DB.del('jobs',oldKey);await DB.put('jobs',nk,J);
+  for(const r of await DB.byJob(oldKey)){r.job=nk;await DB.put('imgs',r.pid,r);}
+  for(const [pid,k] of await DB.entries('q'))if(k===oldKey)await DB.put('q',pid,nk);
+  if(OPS.has(oldKey)){OPS.set(nk,OPS.get(oldKey));OPS.delete(oldKey);await DB.del('ops',oldKey);await saveOps(nk);}
+  if(CUR===oldKey){CUR=nk;await DB.put('kv','cur',nk);for(const r of IMGS.values())r.job=nk;}
+  return nk;
+}
+
+/* ===== ส่งไฟล์งาน / รวมไฟล์งาน ===== */
+async function ensureImgs(all){
+  await fetchMissing(all);
+  const miss=ORDER.map(chosen).filter(c=>c&&!IMGS.has(c.pid)).length;
+  return miss;
+}
+async function shareJob(){
+  toast('กำลังเตรียมไฟล์...',0);
+  const miss=await ensureImgs(true);
+  if(miss&&!confirm(`ยังโหลดรูปไม่ครบ ${miss} รูป (ไม่มีสัญญาณ)\nส่งเฉพาะรูปที่มีในเครื่องหรือไม่?`))return;
+  const imgs=[...IMGS.values()].filter(r=>!VIEW.deleted[r.pid]).map(r=>({pid:r.pid,slot:(VIEW.photos[r.pid]||r).slot,w:r.w,h:r.h,ts:r.ts,src:r.src,crop:cropOf(r.pid)}));
+  const data={type:'jobshare',v:2,meta:{id:VIEW.id,machine:VIEW.machine,date:VIEW.date,pages:VIEW.pages,caps:VIEW.caps,choice:VIEW.choice},imgs};
+  const name=`งาน_${VIEW.machine}_${VIEW.date}.json`.replace(/[\\/:*?"<>|\s]+/g,'_');
+  const file=new File([JSON.stringify(data)],name,{type:'text/plain'});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});toast('ส่งไฟล์แล้ว ✓');return;}}
+  catch(e){if(e.name==='AbortError'){toast('ยกเลิกการส่ง');return;}}
+  download(file,name);toast(`บันทึกไฟล์ ${imgs.length} รูปแล้ว ✓ ส่งไฟล์นี้ทาง LINE ได้เลย`,3500);
+}
+$('#fJson').addEventListener('change',async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  let o;try{o=JSON.parse(await f.text());}catch(err){toast('⚠️ อ่านไฟล์ไม่ได้');return;}
+  try{
+    if(o.type==='template')return applyTemplate(o);
+    if(o.type==='jobshare')return mergeJob(o.meta,o.imgs||[]);
+    if(o.slots)return migrateOld(o,true);
+    toast('⚠️ ไฟล์นี้ไม่ใช่ไฟล์งานหรือแม่แบบของรายงานนี้');
+  }catch(err){console.error(err);toast('⚠️ รวมไฟล์ไม่สำเร็จ');}
+});
+async function mergeJob(m,imgs){
+  const id=m.id||mkId(m.machine,m.date), jid=jkey(CFG.active,id);
+  if(!JOBS.has(jid)){
+    let got=false;
+    if(actTeam()){try{const r=await api({a:'get',job:id});JOBS.set(jid,{meta:r.meta,local:false,team:CFG.active});got=true;}catch(e){}}
+    if(!got)JOBS.set(jid,{meta:norm({id,machine:m.machine,date:m.date,pages:normPages(m.pages,true),closed:false,updated:0}),local:true,team:CFG.active});
+    await saveJob(jid);
+  }
+  if(CUR!==jid)await openJob(jid);
+  if(VIEW.closed){toast('🔒 งานนี้ปิดแล้ว รวมไฟล์ไม่ได้');return;}
+  let added=0;
+  for(const r of imgs){
+    if(!r||!r.pid||IMGS.has(r.pid)||VIEW.deleted[r.pid]||VIEW.photos[r.pid])continue;
+    const rec={pid:r.pid,job:jid,slot:r.slot,w:r.w,h:r.h,ts:r.ts||Date.now(),src:r.src,up:false,crop:r.crop||null};
+    IMGS.set(r.pid,rec);await DB.put('imgs',r.pid,rec);await DB.put('q',r.pid,jid);added++;
+  }
+  for(const [s,v] of Object.entries(m.caps||{}))if(v&&!VIEW.caps[s])doOp({t:'cap',slot:s,v});
+  for(const [s,p] of Object.entries(m.choice||{}))if(!VIEW.choice[s])doOp({t:'choose',slot:s,pid:p});
+  renderJob();kick(300);
+  toast(`รวมงาน ${VIEW.machine} แล้ว: เพิ่ม ${added} รูป ✓`,3500);
+}
+
+/* ===== แม่แบบ ===== */
+async function saveTemplate(){
+  const name=await askText({title:'📑 บันทึกแม่แบบ',label:'ชื่อแม่แบบ',value:'แม่แบบรายงาน',ok:'บันทึก',
+    note:'เก็บหัวข้อ รูปแบบหน้า และโลโก้ไว้เป็นไฟล์ และตั้งเป็นแม่แบบสำหรับงานใหม่ในเครื่องนี้'});
+  if(!name||!name.trim())return;
+  TPL=clone(VIEW.pages);await DB.put('kv','tpl',TPL);
+  const tpl={type:'template',name:name.trim(),logo:LOGO,pages:TPL};
+  download(new Blob([JSON.stringify(tpl)],{type:'application/json'}),name.trim().replace(/[\\/:*?"<>|]+/g,'_')+'.json');
+  toast('บันทึกแม่แบบแล้ว ✓ งานใหม่จะใช้แม่แบบนี้');
+}
+async function applyTemplate(o){
+  TPL=normPages(o.pages,true);await DB.put('kv','tpl',TPL);
+  if(o.logo){LOGO=o.logo;await DB.put('kv','logo',LOGO);renderLogo();}
+  if(CUR&&!VIEW.closed&&confirm(`ใช้แม่แบบ “${o.name||''}” กับงานที่เปิดอยู่ด้วยหรือไม่?\n(งานใหม่จะใช้แม่แบบนี้อยู่แล้ว)`))setPages(clone(TPL));
+  toast(`ตั้งแม่แบบ “${o.name||''}” สำหรับงานใหม่แล้ว ✓`,3000);
+}
+
+/* ===== ย้ายข้อมูลจากไฟล์รุ่นเก่า ===== */
+async function migrateOld(st,announce){
+  const d=today(), m=(st.machine||'งานเดิม').trim().toUpperCase()||'งานเดิม', id=mkId(m,d), jid=jkey(CFG.active,id);
+  const pagesOld=st.pages?normPages(st.pages,true):defPages();
+  if(!JOBS.has(jid)){JOBS.set(jid,{meta:norm({id,machine:m,date:d,pages:pagesOld,caps:st.caps||{},closed:false,updated:0}),local:true,team:CFG.active});await saveJob(jid);}
+  for(const [slot,s] of Object.entries(st.slots||{})){
+    const pid=uid();
+    await DB.put('imgs',pid,{pid,job:jid,slot,w:s.w,h:s.h,ts:Date.now(),src:s.src,up:false,crop:{z:s.z||1,px:s.px??.5,py:s.py??.5}});
+    await DB.put('q',pid,jid);
+  }
+  if(st.logo&&!LOGO){LOGO=st.logo;await DB.put('kv','logo',LOGO);}
+  if(announce){await openJob(jid);toast(`นำเข้างานเดิมเป็นงาน ${m} แล้ว ✓`,3000);}
+  return jid;
+}
+
+/* =====================================================================
+   PDF / Word
+   ===================================================================== */
+async function doPdf(){
+  if(!CUR)return;
+  toast('กำลังเตรียม...',0);
+  const miss=await ensureImgs(false);
+  if(miss&&!confirm(`ยังโหลดรูปจากทีมไม่ครบ ${miss} รูป\nพิมพ์ต่อหรือไม่?`))return;
+  const o=checkOverflow();
+  if(o.length&&!confirm(`หน้า ${o.join(', ')} มีรูปล้นหน้า รูปที่ล้นจะถูกตัด\nพิมพ์ต่อหรือไม่?`))return;
+  toast('เลือก “บันทึกเป็น PDF” • A4 • ระยะขอบ: ไม่มี',3000);
+  setTimeout(()=>window.print(),300);
+}
+$('#bPdf').onclick=doPdf;
+
+function cropData(src,d,cm){
+  return new Promise(res=>{const im=new Image();
+    im.onload=()=>{const N=Math.round(cm/2.54*300),c=document.createElement('canvas');c.width=c.height=N;const x=c.getContext('2d');
+      x.fillStyle='#fff';x.fillRect(0,0,N,N);x.imageSmoothingQuality='high';const g=geom(d);
+      x.drawImage(im,g.L/100*N,g.T/100*N,g.W/100*N,g.H/100*N);res(c.toDataURL('image/jpeg',.9));};
+    im.onerror=()=>res(null);im.src=src;});
+}
+function b64utf8(s){const b=new TextEncoder().encode(s);let out='';for(let i=0;i<b.length;i+=0x8000)out+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(out);}
+const wrap76=s=>s.replace(/.{1,76}/g,'$&\r\n');
+
+async function doWord(){
+  if(!CUR)return;
+  toast('กำลังสร้างไฟล์ Word...',0);
+  const miss=await ensureImgs(false);
+  if(miss&&!confirm(`ยังโหลดรูปจากทีมไม่ครบ ${miss} รูป\nสร้างไฟล์ต่อหรือไม่?`))return;
+  const base='file:///C:/report_files/',parts=[];let n=0;
+  const addImg=url=>{const m=url.match(/^data:(image\/[\w+]+);base64,(.*)$/);const name='img'+(++n)+(m[1]==='image/png'?'.png':'.jpg');parts.push({loc:base+name,type:m[1],b64:m[2]});return base+name;};
+  let logoTag='';
+  if(LOGO){const src=addImg(LOGO.src);let h=44,w=Math.round(h*LOGO.w/LOGO.h);if(w>175){w=175;h=Math.round(w*LOGO.h/LOGO.w);}logoTag=`<img src="${src}" width=${w} height=${h}>`;}
+  const B='border:0.5pt solid #b7c3d0',NP=VIEW.pages.length;
+  let body='';
+  for(let pi=0;pi<NP;pi++){
+    const p=VIEW.pages[pi];
+    if(pi>0)body+='<br clear=all style="page-break-before:always">';
+    body+=`<table width="100%" cellspacing=0 cellpadding=0 style="border-collapse:collapse"><tr>
+      <td style="border-bottom:2pt solid #0b5394;height:38pt" valign=middle>${logoTag||'&nbsp;'}</td>
+      <td style="border-bottom:2pt solid #0b5394;font-size:10pt" align=right valign=middle>รหัสเครื่องจักร: <b>${esc(VIEW.machine)}</b> &nbsp; วันที่ ${fmtD(VIEW.date)}<br>หน้า ${pi+1}/${NP}</td></tr></table>
+      <p style="margin:6pt 0 6pt 0;background:#e8f0fa;border-left:6pt solid #0b5394;padding:3pt 6pt;font-size:12pt;font-weight:bold">${pi+1}. ${esc(p.t)}</p>`;
+    let k=0;
+    for(const cnt of LAYOUTS[p.layout]){
+      const s=rowSize(p,cnt),px=Math.round(s/2.54*96);
+      const gapW=cnt===2?Math.max(0.3,19-2*s-0.1).toFixed(2)+'cm':'0.35cm';
+      let img='',cap='';
+      for(let i=0;i<cnt;i++){
+        const id=`${p.id}-${k++}`,ch=chosen(id),rec=ch&&IMGS.get(ch.pid);
+        if(i>0){img+=`<td style="width:${gapW}">&nbsp;</td>`;cap+=`<td style="width:${gapW}">&nbsp;</td>`;}
+        if(rec){const c=await cropData(rec.src,{w:ch.w,h:ch.h,...cropOf(ch.pid)},s);
+          img+=`<td style="width:${s}cm;height:${s}cm;${B};padding:0" align=center valign=middle>${c?`<img src="${addImg(c)}" width=${px} height=${px}>`:'&nbsp;'}</td>`;}
+        else img+=`<td style="width:${s}cm;height:${s}cm;${B};padding:0">&nbsp;</td>`;
+        if(p.cap)cap+=`<td style="width:${s}cm;height:1cm;${B};border-top:none;font-size:9pt;padding:2pt" valign=top>${esc(VIEW.caps[id]||'').replace(/\n/g,'<br>')||'&nbsp;'}</td>`;
+      }
+      body+=`<table align=center ${cnt===2?'width="100%" ':''}cellspacing=0 cellpadding=0 style="border-collapse:collapse;margin:0 auto"><tr>${img}</tr>${p.cap?`<tr>${cap}</tr>`:''}</table><p style="margin:0;font-size:4pt;line-height:4pt">&nbsp;</p>`;
+    }
+  }
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>Report</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>@page Section1{size:21cm 29.7cm;margin:0.8cm 1cm 0.8cm 1cm;mso-header-margin:.4cm;mso-footer-margin:.4cm}div.Section1{page:Section1}body,td,p{font-family:Tahoma,"Leelawadee UI",sans-serif;font-size:10pt}</style></head>
+<body><div class=Section1>${body}</div></body></html>`;
+  const BD='----=_NextPart_REPORT_01';
+  let mh=`MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary="${BD}"; type="text/html"\r\n\r\n`+
+    `--${BD}\r\nContent-Location: ${base}report.htm\r\nContent-Transfer-Encoding: base64\r\nContent-Type: text/html; charset="utf-8"\r\n\r\n${wrap76(b64utf8(html))}\r\n`;
+  for(const q of parts)mh+=`--${BD}\r\nContent-Location: ${q.loc}\r\nContent-Transfer-Encoding: base64\r\nContent-Type: ${q.type}\r\n\r\n${wrap76(q.b64)}\r\n`;
+  mh+=`--${BD}--\r\n`;
+  download(new Blob([mh],{type:'application/msword'}),fname('doc'));
+  toast('ส่งออก Word เรียบร้อย ✓');
+}
+function fname(ext){return `OVERHAUL_${VIEW.machine}_${VIEW.date}.${ext}`.replace(/[\\/:*?"<>|\s]+/g,'_');}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);}
+
+/* =====================================================================
+   ปุ่มแถบบน + จอ
+   ===================================================================== */
+$('#bJob').onclick=()=>jobsSheet();
+$('#bMenu').onclick=()=>menuSheet();
+$('#chip').onclick=async()=>{
+  if(!CFG.teams.length){teamSheet();return;}
+  const msg=NET==='err'?`⚠️ ${NETMSG}`:NET==='off'?'📵 ไม่มีสัญญาณ':PEND?`⏳ รอส่ง ${PEND} รายการ`:'☁️ ซิงก์กับทีมแล้ว';
+  toast(msg+(NET==='err'&&/รหัสทีม/.test(NETMSG)?' — ตรวจที่ ⚙️ ตั้งค่า':''),3000);syncAll();
+};
+function fit(){const w=document.documentElement.clientWidth;const pw=210/25.4*96;document.documentElement.style.setProperty('--z',Math.min(1,(w-16)/pw));}
+window.addEventListener('resize',fit);
+window.addEventListener('online',()=>kick(500));
+window.addEventListener('offline',()=>setNet('off'));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')kick(300);});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(swapFrom)doSwap(swapFrom,swapFrom);else closeSheet();}});
+setInterval(()=>{if(document.visibilityState==='visible'&&CFG.teams.length&&!SYNCING)syncAll();},POLL_MS);
+
+/* =====================================================================
+   เริ่มต้น
+   ===================================================================== */
+(async()=>{
+  fit();
+  /* ใช้งานออฟไลน์ (เฉพาะตอนเปิดผ่าน https เช่น GitHub Pages) */
+  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  /* ขอให้เบราว์เซอร์ไม่ลบรูปที่เก็บในเครื่องเอง */
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+  const ok=await DB.open();
+  if(!ok)setTimeout(()=>toast('⚠️ เบราว์เซอร์นี้บันทึกข้อมูลในเครื่องไม่ได้ ถ้าปิดหน้านี้รูปจะหาย',6000),800);
+  let c=await DB.get('kv','cfg')||{};
+  const oldUrl=c.url&&!c.teams;               /* ย้ายการตั้งค่ารุ่นก่อน (ทีมเดียว) */
+  if(oldUrl)c={teams:[{id:'t1',name:'ทีม 1',url:c.url,key:c.key||''}],active:'t1',pin:c.pin||''};
+  CFG=Object.assign({teams:[],active:'',pin:''},c);delete CFG.url;delete CFG.key;
+  if(oldUrl)await saveCfg();
+  LOGO=await DB.get('kv','logo')||null;
+  TPL=await DB.get('kv','tpl')||null;
+  for(const [k,v] of await DB.entries('jobs')){v.meta=norm(v.meta);JOBS.set(k,v);}
+  for(const [k,v] of await DB.entries('ops'))OPS.set(k,v);
+  /* งานรุ่นก่อนยังไม่มีทีม → ผูกกับทีมเดิม (ถ้ามี) และเปลี่ยนคีย์เป็น ทีม::รหัสงาน */
+  const curOld=await DB.get('kv','cur');
+  for(const [k,J] of [...JOBS])if(!('team' in J)){
+    J.team=oldUrl?'t1':'';const nk=await rekey(k,J.team,false);
+    if(curOld===k)await DB.put('kv','cur',nk);
+  }
+  const old=await DB.get('kv','state');
+  if(old&&old.slots&&Object.keys(old.slots).length){await migrateOld(old,false);await DB.del('kv','state');}
+  else if(old)await DB.del('kv','state');
+  if(actTeam())api({a:'ping'},20000).then(async r=>{setNet('on');const t=actTeam();if(t&&r.team&&t.name!==r.team){t.name=r.team;saveCfg();}if(r.config&&r.config.logo&&(!LOGO||LOGO.src!==r.config.logo.src)){LOGO=r.config.logo;await DB.put('kv','logo',LOGO);renderLogo();}}).catch(netFail);
+  const cur=await DB.get('kv','cur');
+  if(cur&&JOBS.has(cur))await openJob(cur);
+  else if([...JOBS.values()].filter(J=>(J.team||'')===CFG.active).length===1)await openJob([...JOBS].find(([k,J])=>(J.team||'')===CFG.active)[0]);
+  else{updChip();jobsSheet();}
+})();
+</script>
+</body>
+</html>
