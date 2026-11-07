@@ -187,6 +187,10 @@ const fmtD=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?`${m[3]}
 const fmtT=ts=>{const d=new Date(ts),z=x=>String(x).padStart(2,'0');return `${z(d.getHours())}:${z(d.getMinutes())} ${z(d.getDate())}/${z(d.getMonth()+1)}`;};
 const rowSize=(p,cnt)=>cnt===3?Math.min(p.size,MAX3):p.size;
 const mkId=(m,d)=>m.replace(/[\\/:*?"<>|#%&\s]+/g,'-')+'_'+d;
+/* ล้างชื่อเครื่อง: ef1 - 1 – 1 → EF1-1-1 (ตัวพิมพ์ใหญ่, ขีดทุกแบบเป็น -, ตัดช่องว่าง) */
+const normMachine=s=>String(s||'').toUpperCase()
+  .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g,'-').replace(/[\\/:*?"<>|#%&]/g,'-')
+  .replace(/\s*-\s*/g,'-').trim().replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
 
 let tT;
 function toast(msg,ms=2400){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(tT);if(ms)tT=setTimeout(()=>t.classList.remove('show'),ms);}
@@ -398,6 +402,11 @@ function closeSheet(){
   if($('#sheet').classList.contains('lock')&&!CUR)return;
   $('#sheet').classList.add('hide');$('#sheet').classList.remove('lock');shFn=null;$('#shBody').innerHTML='';
 }
+$('#sheet').addEventListener('input',e=>{
+  if(e.target.id!=='nj_m')return;
+  const v=normMachine(e.target.value),pv=$('#nj_prev');
+  if(pv)pv.textContent=v&&v!==e.target.value.trim()?`จะบันทึกเป็น: ${v}`:'';
+});
 $('#sheet').addEventListener('click',e=>{
   if(e.target.id==='sheet'||e.target.closest('#shX')){closeSheet();return;}
   const b=e.target.closest('[data-act]');if(b&&shFn&&!b.disabled)shFn(b.dataset.act,b);
@@ -441,11 +450,12 @@ function jobsHtml(){
       <div><div class="m">${r.closed?'🔒 ':''}${esc(r.machine)}</div><div class="d">📅 ${fmtD(r.date)} • 📷 ${r.count} รูป</div></div>
       <div class="st">${r.key===CUR?'กำลังเปิด<br>':''}${!tid?'📱 ในเครื่อง':r.local?'📱 ยังไม่ส่ง':'☁️ ทีม'}</div></div>`).join('');
   const t=actTeam();
-  return `<div class="job" data-act="team" style="background:#eef4fb"><div><div class="m">👥 ${t?esc(t.name):'ใช้ในเครื่องอย่างเดียว'}</div><div class="d">${CFG.teams.length>1?'แตะเพื่อสลับทีม':t?'แตะเพื่อจัดการทีม':'แตะเพื่อเชื่อมต่อทีม'}</div></div><div class="st">🔀</div></div>
-    <label class="fld"><span>รหัสเครื่องจักร</span><input id="nj_m" placeholder="เช่น FAN-01" autocapitalize="characters" autocomplete="off"></label>
+  return `${t?'':'<div class="job" data-act="team" style="background:#eef4fb"><div><div class="m">📱 ใช้ในเครื่องอย่างเดียว</div><div class="d">แตะเพื่อเชื่อมต่อทีม</div></div><div class="st">☁️</div></div>'}
+    <label class="fld"><span>รหัสเครื่องจักร</span><input id="nj_m" placeholder="เช่น EF1-1-1" autocapitalize="characters" autocomplete="off"></label>
+    <div class="d" id="nj_prev" style="font-size:13px;color:#1e6b40;margin:-4px 2px 6px;min-height:18px"></div>
     <label class="fld"><span>วันที่</span><input id="nj_d" type="date" value="${today()}"></label>
     <div class="acts"><button class="act big" data-act="create">➕ เริ่มงาน / เข้าร่วมงาน</button></div>
-    <div class="note">ถ้าเพื่อนเริ่มงานรหัสเครื่องและวันที่เดียวกันไว้แล้ว จะเข้าร่วมงานเดียวกันอัตโนมัติ</div>
+    <div class="note">✅ <b>เครื่องเดียวกัน + วันเดียวกัน</b> = งานเดียวกัน เห็นรูปที่คนอื่นถ่ายแล้ว<br>🔁 เครื่องที่มีงานวันก่อน<b>ยังไม่ปิด</b> ระบบจะถามว่าจะต่องานเดิมไหม<br>📅 งานเก่าปิดแล้ว = เริ่มงานใหม่ของวันนี้<br>🔤 พิมพ์ตัวเล็ก/ใหญ่ หรือเว้นวรรคต่างกัน ระบบรวมเป็นเครื่องเดียวกันให้</div>
     <div class="tabs"><button data-act="tab0" class="${JL_TAB?'':'on'}">🔧 กำลังทำ (${open.length})</button><button data-act="tab1" class="${JL_TAB?'on':''}">🔒 ปิดแล้ว (${closed.length})</button></div>
     <div id="jl">${items||`<div class="empty-list">${actTeam()&&!SRV_LIST?'⏳ กำลังโหลดรายการจากทีม...':'ยังไม่มีงาน'}</div>`}</div>`;
 }
@@ -456,13 +466,16 @@ async function jobsSheet(){
     if(act==='open'){await openJob(el.dataset.jid);return;}
     if(act==='team'){teamSheet();return;}
     if(act==='create'){
-      const m=$('#nj_m').value.trim().toUpperCase().replace(/\s+/g,' ');
+      const m=normMachine($('#nj_m').value);
       const d=$('#nj_d').value||today();
       if(!m){toast('กรุณากรอกรหัสเครื่องจักร');$('#nj_m').focus();return;}
+      if(actTeam()&&!SRV_LIST){try{SRV_LIST=(await api({a:'list'},8000)).jobs;}catch(e){}}
       const jid=mkId(m,d), key=jkey(CFG.active,jid), rows=jobRows();
       if(rows.some(r=>r.key===key)){await openJob(key);toast(`เข้าร่วมงาน ${m} ✓`);return;}
-      const other=rows.find(r=>!r.closed&&r.machine===m);
-      if(other&&confirm(`มีงาน ${m} วันที่ ${fmtD(other.date)} ที่ยังไม่ปิด\n\nกด OK = เข้าร่วมงานนั้น\nกด Cancel = สร้างงานใหม่วันที่ ${fmtD(d)}`)){await openJob(other.key);return;}
+      /* เครื่องเดียวกันมีงานวันอื่นที่ยังไม่ปิด (เช่น ถอดไปซ่อมข้างนอกแล้วกลับมาใส่) → ถามว่าจะต่องานเดิมไหม */
+      const prev=rows.filter(r=>!r.closed&&r.machine===m&&r.date!==d).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
+      if(prev&&confirm(`เครื่อง ${m} มีงานวันที่ ${fmtD(prev.date)} ที่ยังไม่ปิด\n\nกด OK = ต่องานเดิม (เห็นรูปที่ถ่ายไว้แล้ว)\nกด Cancel = เริ่มงานใหม่วันที่ ${fmtD(d)}`)){
+        await openJob(prev.key);toast(`ต่องาน ${m} วันที่ ${fmtD(prev.date)} ✓`);return;}
       const meta=norm({id:jid,machine:m,date:d,pages:clone(TPL||defPages()),closed:false,updated:0});
       JOBS.set(key,{meta,local:true,team:CFG.active});await saveJob(key);
       await openJob(key);toast(`เริ่มงาน ${m} แล้ว ✓`);kick();
@@ -470,7 +483,7 @@ async function jobsSheet(){
   };
   const refresh=()=>{if(!$('#sheet').classList.contains('hide')&&$('#nj_m')){const v=$('#nj_m').value,d=$('#nj_d').value;
     $('#shBody').innerHTML=jobsHtml();$('#nj_m').value=v;$('#nj_d').value=d;}};
-  openSheet('📋 รายการงาน'+(actTeam()?' — '+actTeam().name:''),jobsHtml(),handler,lock);
+  openSheet('📋 รายการงาน',jobsHtml(),handler,lock);
   const t=actTeam();
   if(t){try{const L=(await api({a:'list'},30000,t)).jobs;if(CFG.active===t.id)SRV_LIST=L;setNet('on');}catch(e){netFail(e);}refresh();}
 }
@@ -803,7 +816,7 @@ $('#fLogo').addEventListener('change',async e=>{
   try{LOGO=await readImage(f,600,true);await DB.put('kv','logo',LOGO);renderLogo();toast('ใส่โลโก้แล้ว ✓');}
   catch(err){toast('⚠️ เปิดรูปโลโก้ไม่ได้');return;}
   if(actTeam()){
-    const pin=await askPin('ใส่ PIN ผู้ดูแล เพื่อให้ทุกเครื่องทุกทีมใช้โลโก้นี้ด้วย<br>(กดยกเลิก = ใช้เฉพาะเครื่องนี้)');
+    const pin=await askPin('ใส่ PIN หัวหน้า เพื่อให้ทุกเครื่องใช้โลโก้นี้ด้วย<br>(กดยกเลิก = ใช้เฉพาะเครื่องนี้)');
     if(pin==null)return;
     try{await api({a:'setLogo',pin,logo:LOGO});toast('ส่งโลโก้ให้ทั้งทีมแล้ว ✓');}catch(e){toast('⚠️ '+e.message);}
   }
@@ -817,7 +830,6 @@ function menuSheet(){
   openSheet('☰ เมนู',`<div class="acts">
     <div class="sec">งาน</div>
     <button class="act" data-act="jobs">📋 รายการงาน</button>
-    <button class="act" data-act="team">🔀 ทีม: ${esc(actTeam()?actTeam().name:'ในเครื่อง')}</button>
     <button class="act" data-act="sync"${dis(!CFG.teams.length)}>🔄 ซิงก์ตอนนี้</button>
     <button class="act" data-act="close"${dis(!has||cl)}>✅ ปิดงาน</button>
     <button class="act" data-act="reopen"${dis(!has||!cl)}>🔓 เปิดงานอีกครั้ง</button>
@@ -835,7 +847,7 @@ function menuSheet(){
     <button class="act" data-act="tpl"${dis(!has)}>📑 บันทึกแม่แบบ</button>
     <button class="act" data-act="reset"${dis(!has||cl)}>↺ แม่แบบเริ่มต้น</button>
     <button class="act" data-act="logo">🖼️ โลโก้</button>
-    <button class="act" data-act="settings">⚙️ ตั้งค่าทีม / เชื่อมต่อ</button>
+    <button class="act" data-act="settings">⚙️ ตั้งค่าเชื่อมต่อ</button>
     <button class="act warn full" data-act="remove"${dis(!has)}>🗑️ ลบงานนี้ออกจากเครื่องนี้</button>
   </div>`,async act=>{
     const go={
@@ -906,45 +918,45 @@ async function pendingOfTeam(tid){
   return q+o;
 }
 async function teamSheet(){
-  const pend={};for(const t of CFG.teams)pend[t.id]=await pendingOfTeam(t.id);
-  const row=(tid,name,sub)=>`<div class="job${CFG.active===tid?' cur':''}" data-act="use" data-tid="${tid}">
-      <div><div class="m">${tid?'👥':'📱'} ${esc(name)}</div><div class="d">${sub}</div></div>
-      <div class="st">${CFG.active===tid?'✓ ใช้อยู่':'แตะเพื่อสลับ'}${tid?`<br><button class="act" style="padding:4px 9px;font-size:12px;margin-top:4px;display:inline-flex" data-act="link" data-tid="${tid}">🔗 ลิงก์ตั้งค่า</button> <button class="act" style="padding:4px 9px;font-size:12px;margin-top:4px;display:inline-flex" data-act="edit" data-tid="${tid}">✏️ แก้</button>`:''}</div></div>`;
-  openSheet('🔀 ทีม',`<div class="note">แตะทีมเพื่อสลับ งานจะแยกตามทีม และรูปที่ค้างส่งของทุกทีมจะส่งต่อเองเบื้องหลัง</div>
-    ${CFG.teams.map(t=>row(t.id,t.name,`รหัสทีม: ${esc(t.key)}${pend[t.id]?` • ⏳ ค้างส่ง ${pend[t.id]}`:''}`)).join('')}
-    ${row('','ใช้ในเครื่องอย่างเดียว','ไม่ส่งข้อมูลให้ทีม')}
-    <div class="acts" style="margin-top:8px"><button class="act big" data-act="add">➕ เพิ่มทีม</button>
-    <button class="act full" data-act="pin">🔑 PIN หัวหน้า (โหมดในเครื่อง)</button></div>`,
+  const t=CFG.teams[0]||null;
+  if(!t)return teamForm(null);
+  const on=!!actTeam(), pend=await pendingOfTeam(t.id);
+  const row=(tid,icon,name,sub,act)=>`<div class="job${act?' cur':''}" data-act="use" data-tid="${tid}">
+      <div><div class="m">${icon} ${name}</div><div class="d">${sub}</div></div><div class="st">${act?'✓ ใช้อยู่':'แตะเพื่อใช้'}</div></div>`;
+  openSheet('⚙️ ตั้งค่าเชื่อมต่อ',`
+    ${row(t.id,'☁️','เชื่อมต่อทีม',`รหัสทีม: ${esc(t.key)}${pend?` • ⏳ ค้างส่ง ${pend}`:''}`,on)}
+    ${row('','📱','ใช้ในเครื่องอย่างเดียว','ไม่ส่งข้อมูลให้ทีม',!on)}
+    <div class="acts" style="margin-top:8px">
+      <button class="act big" data-act="link">🔗 ส่งลิงก์ตั้งค่าให้ช่าง (LINE)</button>
+      <button class="act" data-act="edit">✏️ แก้ลิงก์ / รหัสทีม</button>
+      <button class="act" data-act="pin">🔑 PIN โหมดในเครื่อง</button></div>`,
     async(act,el)=>{
       if(act==='use')return switchTeam(el.dataset.tid);
-      if(act==='edit')return teamForm(team(el.dataset.tid));
-      if(act==='link')return shareSetupLink(team(el.dataset.tid));
-      if(act==='add')return teamForm(null);
+      if(act==='edit')return teamForm(t);
+      if(act==='link')return shareSetupLink(t);
       if(act==='pin'){const v=await askText({title:'🔑 PIN โหมดในเครื่อง',label:'PIN (เว้นว่าง = ไม่ใช้)',type:'pin',value:CFG.pin});
         if(v!=null){CFG.pin=v.trim();await saveCfg();toast('บันทึก PIN แล้ว ✓');}teamSheet();}
     });
 }
 function teamForm(t){
-  const url=t?t.url:(CFG.teams[0]?CFG.teams[0].url:'');
-  openSheet(t?`✏️ แก้ไข ${t.name}`:'➕ เพิ่มทีม',`
-    <div class="note">ทุกทีมใช้ลิงก์ /exec เดียวกันได้ ต่างกันที่ <b>รหัสทีม</b> (หัวหน้าตั้งไว้ใน Code.gs)<br>ชื่อทีมจะดึงจากเซิร์ฟเวอร์ให้อัตโนมัติ</div>
-    <label class="fld"><span>ลิงก์เซิร์ฟเวอร์ (ลงท้ายด้วย /exec)</span><input id="st_url" value="${esc(url)}" placeholder="https://script.google.com/macros/s/.../exec"></label>
+  openSheet(t?'✏️ แก้ไขการเชื่อมต่อ':'☁️ เชื่อมต่อทีม',`
+    <div class="note">ใส่ลิงก์ /exec และรหัสทีม (หัวหน้าตั้งไว้ใน Code.gs)<br>💡 ถ้ามีลิงก์ตั้งค่าในกลุ่ม LINE แตะลิงก์นั้นแทนได้เลย</div>
+    <label class="fld"><span>ลิงก์เซิร์ฟเวอร์ (ลงท้ายด้วย /exec)</span><input id="st_url" value="${esc(t?t.url:'')}" placeholder="https://script.google.com/macros/s/.../exec"></label>
     <label class="fld"><span>รหัสทีม</span><input id="st_key" value="${esc(t?t.key:'')}" autocomplete="off"></label>
-    <div class="acts">${t?'<button class="act warn" data-act="del">🗑️ ลบทีมนี้</button>':'<button class="act" data-act="back">← กลับ</button>'}<button class="act pri" data-act="save">🔌 ทดสอบและบันทึก</button></div>`,
+    <div class="acts"><button class="act" data-act="${t?'back':'local'}">${t?'← กลับ':'📱 ใช้ในเครื่องอย่างเดียว'}</button><button class="act pri" data-act="save">🔌 ทดสอบและบันทึก</button></div>`,
     async act=>{
       if(act==='back')return teamSheet();
-      if(act==='del')return deleteTeam(t);
+      if(act==='local')return switchTeam('');
       const c={url:$('#st_url').value.trim(),key:$('#st_key').value.trim()};
       if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(c.url)){toast('⚠️ ลิงก์ต้องขึ้นต้นด้วย https://script.google.com และลงท้ายด้วย /exec',4000);return;}
       if(!c.key){toast('กรุณาใส่รหัสทีม');return;}
-      const dup=CFG.teams.find(x=>x.url===c.url&&x.key===c.key&&(!t||x.id!==t.id));
-      if(dup){toast(`⚠️ มีทีมนี้แล้ว (${dup.name})`);return;}
       toast('กำลังทดสอบ...',0);
       let r;try{r=await api({a:'ping'},20000,c);}catch(e){toast('⚠️ เชื่อมต่อไม่ได้: '+e.message,4500);return;}
       if(r.config&&r.config.logo){LOGO=r.config.logo;await DB.put('kv','logo',LOGO);renderLogo();}
-      const name=r.team||c.key;
-      if(t){Object.assign(t,c,{name});await saveCfg();toast(`บันทึก ${name} แล้ว ✓`);if(CUR)renderJob();kick(200);teamSheet();}
-      else{const id='t'+uid();CFG.teams.push({id,name,...c});await saveCfg();toast(`เพิ่ม ${name} แล้ว ✓`);await switchTeam(id);}
+      const name=r.team||c.key, ex=t||CFG.teams[0];
+      SRV_LIST=null;
+      if(ex){Object.assign(ex,c,{name});await saveCfg();toast('บันทึกการเชื่อมต่อแล้ว ✓');if(CUR)renderJob();await switchTeam(ex.id);}
+      else{const id='t'+uid();CFG.teams.push({id,name,...c});await saveCfg();toast('เชื่อมต่อทีมแล้ว ✓');await switchTeam(id);}
     });
 }
 async function switchTeam(tid){
@@ -960,25 +972,11 @@ async function switchTeam(tid){
   /* งานที่ทำแบบในเครื่อง ถามว่าจะส่งเข้าทีมนี้ไหม */
   if(t){
     const orphan=[...JOBS].filter(([k,J])=>!J.team);
-    if(orphan.length&&confirm(`มีงานที่ทำแบบ “ในเครื่อง” ${orphan.length} งาน\n(${orphan.map(([k,J])=>J.meta.machine).join(', ')})\n\nส่งงานเหล่านี้เข้า ${t.name} หรือไม่?`))
+    if(orphan.length&&confirm(`มีงานที่ทำแบบ “ในเครื่อง” ${orphan.length} งาน\n(${orphan.map(([k,J])=>J.meta.machine).join(', ')})\n\nส่งงานเหล่านี้ให้ทีมหรือไม่?`))
       for(const [k] of orphan)await rekey(k,tid,true);
   }
-  toast(t?`ใช้ ${t.name} ✓`:'ใช้งานในเครื่องอย่างเดียว',2500);
+  toast(t?'☁️ เชื่อมต่อทีม ✓':'📱 ใช้งานในเครื่องอย่างเดียว',2500);
   updChip();kick(200);jobsSheet();
-}
-async function deleteTeam(t){
-  const n=await pendingOfTeam(t.id);
-  if(n){toast(`⚠️ ${t.name} ยังมี ${n} รายการค้างส่ง รอให้ส่งครบก่อนลบ`,4000);return;}
-  if(!confirm(`ลบ ${t.name} ออกจากเครื่องนี้?\nงานของทีมนี้ในเครื่องจะถูกลบ (ข้อมูลบน Google Drive ยังอยู่)`))return;
-  for(const [k,J] of [...JOBS])if(J.team===t.id){
-    for(const pk of await DB.keysByJob(k))await DB.del('imgs',pk);
-    OPS.delete(k);await DB.del('ops',k);JOBS.delete(k);await DB.del('jobs',k);
-  }
-  CFG.teams=CFG.teams.filter(x=>x.id!==t.id);
-  if(CFG.active===t.id)CFG.active=CFG.teams[0]?CFG.teams[0].id:'';
-  await saveCfg();
-  if(CUR&&!JOBS.has(CUR)){CUR=null;VIEW=null;IMGS=new Map();await DB.del('kv','cur');$('#pages').innerHTML='';updBar();}
-  toast(`ลบ ${t.name} แล้ว`);teamSheet();
 }
 /* ===== ลิงก์ตั้งค่าอัตโนมัติ: .../overhaul/#u=<ลิงก์ /exec>&k=<รหัสทีม> ===== */
 function setupLinkOf(t){
@@ -986,11 +984,11 @@ function setupLinkOf(t){
 }
 async function shareSetupLink(t){
   if(location.protocol!=='https:'){toast('⚠️ สร้างลิงก์ได้เมื่อเปิดแอปจาก GitHub (https) เท่านั้น',4000);return;}
-  const link=setupLinkOf(t), text=`📷 แตะลิงก์นี้เพื่อตั้งค่าแอป OVERHAUL ของ ${t.name}\n(ส่งเฉพาะในกลุ่มทีม เพราะมีรหัสทีมอยู่ในลิงก์)`;
-  try{if(navigator.share){await navigator.share({title:`ตั้งค่า OVERHAUL ${t.name}`,text,url:link});return;}}
+  const link=setupLinkOf(t), text=`📷 แตะลิงก์นี้เพื่อตั้งค่าแอป OVERHAUL\n(ส่งเฉพาะในกลุ่มทีม เพราะมีรหัสทีมอยู่ในลิงก์)`;
+  try{if(navigator.share){await navigator.share({title:'ตั้งค่า OVERHAUL',text,url:link});return;}}
   catch(e){if(e.name==='AbortError')return;}
   try{await navigator.clipboard.writeText(link);toast('คัดลอกลิงก์แล้ว ✓ นำไปวางในกลุ่ม LINE ได้เลย',3500);return;}catch(e){}
-  await askText({title:`🔗 ลิงก์ตั้งค่า ${t.name}`,label:'กดค้างที่ข้อความเพื่อคัดลอก',value:link,multi:true,ok:'ปิด'});
+  await askText({title:'🔗 ลิงก์ตั้งค่า',label:'กดค้างที่ข้อความเพื่อคัดลอก',value:link,multi:true,ok:'ปิด'});
 }
 function readSetupHash(){
   const h=location.hash.slice(1);if(!h)return null;
@@ -1000,17 +998,18 @@ function readSetupHash(){
 const clearHash=()=>history.replaceState(null,'',location.pathname+location.search);
 async function applySetupLink(c){
   if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(c.url)){clearHash();toast('⚠️ ลิงก์ตั้งค่าไม่ถูกต้อง',4000);return;}
-  const ex=CFG.teams.find(t=>t.url===c.url&&t.key===c.key);
-  if(ex){clearHash();if(CFG.active!==ex.id)await switchTeam(ex.id);toast(`ตั้งค่า ${ex.name} ไว้แล้ว ✓`,3000);return;}
+  const ex=CFG.teams[0]||null;
+  if(ex&&ex.url===c.url&&ex.key===c.key){clearHash();if(CFG.active!==ex.id)await switchTeam(ex.id);toast('ตั้งค่าเชื่อมต่อไว้แล้ว ✓',3000);return;}
   if(!confirm(`เชื่อมต่อแอปกับทีมจากลิงก์นี้หรือไม่?\n\nรหัสทีม: ${c.key}`)){clearHash();return;}
   toast('กำลังเชื่อมต่อทีม...',0);
   let r;try{r=await api({a:'ping'},20000,c);}
   catch(e){toast('⚠️ เชื่อมต่อไม่ได้: '+(e.message||'ไม่มีสัญญาณ')+' — ตรวจสัญญาณแล้วแตะลิงก์อีกครั้ง',6000);return;}
   clearHash();
   if(r.config&&r.config.logo){LOGO=r.config.logo;await DB.put('kv','logo',LOGO);renderLogo();}
-  const id='t'+uid(), name=r.team||c.key;
-  CFG.teams.push({id,name,...c});await saveCfg();
-  await switchTeam(id);toast(`✅ ตั้งค่า ${name} เรียบร้อย พร้อมใช้งาน`,3500);
+  const name=r.team||c.key;let id;
+  if(ex){Object.assign(ex,c,{name});id=ex.id;}else{id='t'+uid();CFG.teams.push({id,name,...c});}
+  await saveCfg();SRV_LIST=null;
+  await switchTeam(id);toast('✅ เชื่อมต่อทีมเรียบร้อย พร้อมใช้งาน',3500);
 }
 
 /* ย้ายงานในเครื่องไปอยู่ทีมอื่น (เปลี่ยนคีย์) */
@@ -1229,6 +1228,8 @@ setInterval(()=>{if(document.visibilityState==='visible'&&CFG.teams.length&&!SYN
     J.team=oldUrl?'t1':'';const nk=await rekey(k,J.team,false);
     if(curOld===k)await DB.put('kv','cur',nk);
   }
+  /* ไม่แบ่งทีมแล้ว: เก็บการเชื่อมต่อเดียว (งานทดสอบของทีมอื่นในเครื่องจะไม่แสดง) */
+  if(CFG.teams.length>1){const keep=actTeam()||CFG.teams[0];CFG.teams=[keep];CFG.active=keep.id;await saveCfg();}
   const old=await DB.get('kv','state');
   if(old&&old.slots&&Object.keys(old.slots).length){await migrateOld(old,false);await DB.del('kv','state');}
   else if(old)await DB.del('kv','state');
